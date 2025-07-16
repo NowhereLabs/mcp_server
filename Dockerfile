@@ -1,5 +1,22 @@
 # Multi-stage Docker build for Rust MCP Server
-# Stage 1: Build stage
+# Stage 1: Node.js build stage for Tailwind CSS
+FROM node:20-alpine AS css-builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy source files needed for Tailwind
+COPY tailwind.config.js postcss.config.js ./
+COPY templates ./templates
+COPY static/css/input.css ./static/css/
+
+# Build Tailwind CSS
+RUN npm run build-css
+
+# Stage 2: Rust build stage
 FROM rust:latest AS builder
 
 # Install system dependencies needed for building
@@ -30,12 +47,16 @@ COPY templates ./templates
 COPY static ./static
 COPY .env ./.env
 
-# Format, lint, and build the application with strict warnings as errors
+# Copy the built CSS from the css-builder stage
+COPY --from=css-builder /app/static/css/output.css ./static/css/
+
+# Format, lint, test, and build the application with strict warnings as errors
 RUN cargo fmt --check && \
     RUSTFLAGS="-D warnings" cargo clippy -- -D warnings && \
+    RUSTFLAGS="-D warnings" cargo test && \
     RUSTFLAGS="-D warnings" cargo build --release
 
-# Stage 2: Runtime stage
+# Stage 3: Runtime stage
 FROM debian:bookworm-slim
 
 # Install runtime dependencies

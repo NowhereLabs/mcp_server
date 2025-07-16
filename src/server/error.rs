@@ -118,8 +118,6 @@ impl McpServerError {
 
 // Note: MCP error conversion can be added when mcp_spec types are stabilized
 
-pub type Result<T> = std::result::Result<T, McpServerError>;
-
 #[macro_export]
 macro_rules! ensure {
     ($cond:expr, $error:expr) => {

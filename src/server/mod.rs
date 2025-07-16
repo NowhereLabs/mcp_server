@@ -1,11 +1,12 @@
-use crate::shared::state::AppState;
 use mcp_server::{router::RouterService, ByteTransport, Server};
+
+use crate::shared::state::AppState;
 
 pub mod error;
 pub mod mcp_router;
-pub mod prompts;
-pub mod resources;
-pub mod tools;
+
+#[cfg(test)]
+mod echo_test;
 
 pub use mcp_router::McpRouter;
 

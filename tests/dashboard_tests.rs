@@ -1,5 +1,6 @@
-use rust_mcp_server::shared::state::{AppState, MetricValue, ToolCall};
 use std::time::Duration;
+
+use rust_mcp_server::shared::state::{AppState, MetricValue, ToolCall};
 use tokio::time::sleep;
 
 async fn setup_test_state() -> AppState {

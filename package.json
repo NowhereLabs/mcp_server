@@ -1,0 +1,14 @@
+{
+  "name": "rust-mcp-dashboard",
+  "version": "1.0.0",
+  "description": "Tailwind CSS build for Rust MCP Dashboard",
+  "scripts": {
+    "build-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --minify",
+    "watch-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
+  }
+}

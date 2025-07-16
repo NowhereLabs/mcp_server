@@ -1,7 +1,8 @@
-use crate::shared::state::{AppState, SystemEvent};
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 use actix_ws::Message;
 use futures_util::StreamExt;
+
+use crate::shared::state::{AppState, SystemEvent};
 
 pub async fn websocket_handler(
     req: HttpRequest,

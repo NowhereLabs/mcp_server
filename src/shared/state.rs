@@ -1,8 +1,9 @@
+use std::sync::Arc;
+
 use arc_swap::ArcSwap;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
@@ -47,8 +48,18 @@ impl AppState {
         &self,
         call: ToolCall,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Add to history
-        self.tool_calls.write().await.push(call.clone());
+        // Add to history with cleanup to prevent unbounded growth
+        {
+            let mut tool_calls = self.tool_calls.write().await;
+            tool_calls.push(call.clone());
+
+            // Keep only the last 1000 tool calls to prevent memory issues
+            const MAX_TOOL_CALLS: usize = 1000;
+            if tool_calls.len() > MAX_TOOL_CALLS {
+                let excess = tool_calls.len() - MAX_TOOL_CALLS;
+                tool_calls.drain(0..excess);
+            }
+        }
 
         // Emit event (ignore if no subscribers)
         let _ = self.event_tx.send(SystemEvent::ToolCalled {
@@ -74,16 +85,19 @@ impl AppState {
     }
 
     /// Add a tool call to the history (for testing compatibility)
+    #[allow(dead_code)]
     pub async fn add_tool_call(&self, call: ToolCall) {
         self.tool_calls.write().await.push(call);
     }
 
     /// Update a metric
+    #[allow(dead_code)]
     pub fn update_metric(&self, key: &str, value: MetricValue) {
         self.metrics.insert(key.to_string(), value);
     }
 
     /// Get all metrics (for testing)
+    #[allow(dead_code)]
     pub async fn get_metrics(&self) -> std::collections::HashMap<String, MetricValue> {
         self.metrics
             .iter()
@@ -138,11 +152,13 @@ impl AppState {
     }
 
     /// Get current MCP status
+    #[allow(dead_code)]
     pub fn get_status(&self) -> McpStatus {
         (**self.mcp_status.load()).clone()
     }
 
     /// Get active sessions
+    #[allow(dead_code)]
     pub fn get_active_sessions(&self) -> Vec<SessionInfo> {
         self.active_sessions
             .iter()
@@ -151,12 +167,14 @@ impl AppState {
     }
 
     /// Get events (mock implementation for compatibility)
+    #[allow(dead_code)]
     pub fn get_events(&self, _limit: usize) -> Vec<SystemEvent> {
         // In a real implementation, this would return stored events
         vec![]
     }
 
     /// Get tool calls with limit
+    #[allow(dead_code)]
     pub async fn get_tool_calls(&self, limit: usize) -> Vec<ToolCall> {
         let calls = self.tool_calls.read().await;
         calls.iter().rev().take(limit).cloned().collect()

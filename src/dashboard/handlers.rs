@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
+use actix_web::{web, HttpResponse, Result};
+use askama::Template;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
 use crate::shared::{
     config::Config,
     state::{AppState, ToolCall, ToolCallResult},
 };
-use actix_web::{web, HttpResponse, Result};
-use askama::Template;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use uuid::Uuid;
 
 #[derive(Template)]
 #[template(path = "dashboard.html")]
@@ -86,7 +88,10 @@ pub async fn index() -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn health_check() -> Result<HttpResponse> {
@@ -136,7 +141,10 @@ pub async fn get_status(data: web::Data<AppState>) -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
@@ -169,15 +177,18 @@ pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
         success_rate: (success_rate * 10.0).round() / 10.0, // Round to 1 decimal place
         active_sessions: data.active_sessions.len(),
         avg_duration_ms: avg_duration.round(),
-        tools_available: 3,     // filesystem, http, system
-        resources_available: 2, // config, logs
+        tools_available: 1,     // echo
+        resources_available: 0, // disabled
     };
 
     let template = MetricsTemplate { metrics };
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
@@ -218,54 +229,32 @@ pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn list_tools(_data: web::Data<AppState>) -> Result<HttpResponse> {
-    let tools = vec![
-        ToolInfo {
-            name: "filesystem".to_string(),
-            description:
-                "Perform filesystem operations including reading, writing, and listing files"
-                    .to_string(),
-            category: "filesystem".to_string(),
-        },
-        ToolInfo {
-            name: "http".to_string(),
-            description: "Make HTTP requests (GET and POST) to external services".to_string(),
-            category: "http".to_string(),
-        },
-        ToolInfo {
-            name: "system".to_string(),
-            description:
-                "Get system information including CPU, memory, disk, network, and process data"
-                    .to_string(),
-            category: "system".to_string(),
-        },
-    ];
+    let tools = vec![ToolInfo {
+        name: "echo".to_string(),
+        description: "Echo back the provided message".to_string(),
+        category: "utility".to_string(),
+    }];
 
     let template = ToolsTemplate { tools };
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn list_resources(_data: web::Data<AppState>) -> Result<HttpResponse> {
-    let resources = vec![
-        serde_json::json!({
-            "uri": "config://server",
-            "name": "Server Configuration",
-            "description": "Current server configuration and settings",
-            "mime_type": "application/json"
-        }),
-        serde_json::json!({
-            "uri": "logs://recent",
-            "name": "Recent Logs",
-            "description": "Recent server logs and activity",
-            "mime_type": "text/plain"
-        }),
-    ];
+    // Resources are disabled in this simplified MCP server
+    let resources: Vec<serde_json::Value> = vec![];
 
     Ok(HttpResponse::Ok().json(resources))
 }
@@ -324,88 +313,19 @@ pub async fn execute_tool(
     let mut tool_call = ToolCall::new(payload.name.clone(), payload.arguments.clone());
     tool_call.id = tool_call_id;
 
-    // Execute the tool based on its name (simplified version for demo)
+    // Execute the tool based on its name
     let result: Result<serde_json::Value, String> = match payload.name.as_str() {
-        "read_file" => {
-            let path = payload
-                .arguments
-                .get("path")
-                .and_then(|v| v.as_str())
-                .unwrap_or("/etc/hostname");
-            match std::fs::read_to_string(path) {
-                Ok(content) => Ok(serde_json::json!({"content": content})),
-                Err(e) => Err(format!("Failed to read file: {e}")),
+        "echo" => match payload.arguments.get("message").and_then(|v| v.as_str()) {
+            Some(message) => {
+                Ok(serde_json::json!({"echoed": message, "message": format!("Echo: {message}")}))
             }
-        }
-        "write_file" => {
-            let path = payload
-                .arguments
-                .get("path")
-                .and_then(|v| v.as_str())
-                .unwrap_or("/tmp/test.txt");
-            let content = payload
-                .arguments
-                .get("content")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Hello from dashboard!");
-            match std::fs::write(path, content) {
-                Ok(_) => Ok(serde_json::json!({"message": format!("File written to {}", path)})),
-                Err(e) => Err(format!("Failed to write file: {e}")),
-            }
-        }
-        "list_directory" => {
-            let path = payload
-                .arguments
-                .get("path")
-                .and_then(|v| v.as_str())
-                .unwrap_or("/tmp");
-            match std::fs::read_dir(path) {
-                Ok(entries) => {
-                    let files: Vec<String> = entries
-                        .filter_map(|entry| entry.ok())
-                        .map(|entry| entry.file_name().to_string_lossy().to_string())
-                        .collect();
-                    Ok(serde_json::json!({"files": files}))
-                }
-                Err(e) => Err(format!("Failed to list directory: {e}")),
-            }
-        }
-        "http_get" => {
-            let url = payload
-                .arguments
-                .get("url")
-                .and_then(|v| v.as_str())
-                .unwrap_or("https://httpbin.org/get");
-            // For demo purposes, return a mock response
-            Ok(serde_json::json!({"url": url, "method": "GET", "status": "simulated"}))
-        }
-        "http_post" => {
-            let url = payload
-                .arguments
-                .get("url")
-                .and_then(|v| v.as_str())
-                .unwrap_or("https://httpbin.org/post");
-            let post_data = payload
-                .arguments
-                .get("data")
-                .cloned()
-                .unwrap_or(serde_json::json!({"test": "data"}));
-            // For demo purposes, return a mock response
-            Ok(
-                serde_json::json!({"url": url, "method": "POST", "data": post_data, "status": "simulated"}),
-            )
-        }
-        "system_info" => {
-            let info = serde_json::json!({
-                "os": std::env::consts::OS,
-                "arch": std::env::consts::ARCH,
-                "timestamp": chrono::Utc::now(),
-                "hostname": std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".to_string())
-            });
-            Ok(info)
-        }
+            None => Err("Missing message parameter".to_string()),
+        },
         _ => {
-            let error_msg = format!("Unknown tool: {}", payload.name);
+            let error_msg = format!(
+                "Unknown tool: {} (only 'echo' tool is available)",
+                payload.name
+            );
             tool_call.result = Some(ToolCallResult::Error(error_msg.clone()));
             tool_call.success = false;
             tool_call.error = Some(error_msg.clone());
@@ -465,9 +385,23 @@ pub async fn get_config(config: web::Data<Config>) -> Result<HttpResponse> {
 }
 
 pub async fn debug_config(config: web::Data<Config>) -> Result<HttpResponse> {
+    // Filter sensitive environment variables
+    let sensitive_prefixes = ["API_", "SECRET_", "TOKEN_", "KEY_", "PASSWORD_", "AUTH_"];
+    let sensitive_names = ["HOME", "USER", "USERNAME", "PATH"];
+
+    let filtered_env: std::collections::HashMap<String, String> = std::env::vars()
+        .filter(|(key, _)| {
+            let key_upper = key.to_uppercase();
+            !sensitive_prefixes
+                .iter()
+                .any(|prefix| key_upper.starts_with(prefix))
+                && !sensitive_names.iter().any(|name| key_upper == *name)
+        })
+        .collect();
+
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "config": config.get_ref(),
-        "env_vars": std::env::vars().collect::<std::collections::HashMap<String, String>>()
+        "env_vars": filtered_env
     })))
 }
 
@@ -498,19 +432,8 @@ pub async fn debug_events(data: web::Data<AppState>) -> Result<HttpResponse> {
     })))
 }
 
-pub async fn debug_panic() -> Result<HttpResponse> {
-    panic!("Debug panic triggered from dashboard");
-}
-
 pub async fn get_heartbeat(data: web::Data<AppState>) -> Result<HttpResponse> {
-    let mut status = data.mcp_status.load().as_ref().clone();
-
-    // Update heartbeat to current time
-    status.last_heartbeat = Some(chrono::Utc::now());
-    status.connected = true; // Ensure server is marked as connected
-
-    // Update the stored status
-    data.mcp_status.store(Arc::new(status.clone()));
+    let status = data.mcp_status.load().as_ref().clone();
 
     let heartbeat_data = serde_json::json!({
         "timestamp": status.last_heartbeat,

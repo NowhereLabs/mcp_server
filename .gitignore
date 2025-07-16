@@ -32,3 +32,13 @@ coverage/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+
+# Generated CSS
+static/css/output.css
+MIGRATE.md
+alpine-morph-checklist.markdown
+alpine-morph-checklist.markdown:Zone.Identifier
