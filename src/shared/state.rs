@@ -48,8 +48,18 @@ impl AppState {
         &self,
         call: ToolCall,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Add to history
-        self.tool_calls.write().await.push(call.clone());
+        // Add to history with cleanup to prevent unbounded growth
+        {
+            let mut tool_calls = self.tool_calls.write().await;
+            tool_calls.push(call.clone());
+
+            // Keep only the last 1000 tool calls to prevent memory issues
+            const MAX_TOOL_CALLS: usize = 1000;
+            if tool_calls.len() > MAX_TOOL_CALLS {
+                let excess = tool_calls.len() - MAX_TOOL_CALLS;
+                tool_calls.drain(0..excess);
+            }
+        }
 
         // Emit event (ignore if no subscribers)
         let _ = self.event_tx.send(SystemEvent::ToolCalled {

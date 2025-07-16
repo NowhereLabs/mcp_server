@@ -88,7 +88,10 @@ pub async fn index() -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn health_check() -> Result<HttpResponse> {
@@ -138,7 +141,10 @@ pub async fn get_status(data: web::Data<AppState>) -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
@@ -179,7 +185,10 @@ pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
@@ -220,7 +229,10 @@ pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn list_tools(_data: web::Data<AppState>) -> Result<HttpResponse> {
@@ -234,7 +246,10 @@ pub async fn list_tools(_data: web::Data<AppState>) -> Result<HttpResponse> {
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap()))
+        .body(template.render().map_err(|e| {
+            tracing::error!("Template rendering error: {}", e);
+            actix_web::error::ErrorInternalServerError("Template rendering failed")
+        })?))
 }
 
 pub async fn list_resources(_data: web::Data<AppState>) -> Result<HttpResponse> {
@@ -370,9 +385,23 @@ pub async fn get_config(config: web::Data<Config>) -> Result<HttpResponse> {
 }
 
 pub async fn debug_config(config: web::Data<Config>) -> Result<HttpResponse> {
+    // Filter sensitive environment variables
+    let sensitive_prefixes = ["API_", "SECRET_", "TOKEN_", "KEY_", "PASSWORD_", "AUTH_"];
+    let sensitive_names = ["HOME", "USER", "USERNAME", "PATH"];
+
+    let filtered_env: std::collections::HashMap<String, String> = std::env::vars()
+        .filter(|(key, _)| {
+            let key_upper = key.to_uppercase();
+            !sensitive_prefixes
+                .iter()
+                .any(|prefix| key_upper.starts_with(prefix))
+                && !sensitive_names.iter().any(|name| key_upper == *name)
+        })
+        .collect();
+
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "config": config.get_ref(),
-        "env_vars": std::env::vars().collect::<std::collections::HashMap<String, String>>()
+        "env_vars": filtered_env
     })))
 }
 
@@ -403,19 +432,8 @@ pub async fn debug_events(data: web::Data<AppState>) -> Result<HttpResponse> {
     })))
 }
 
-pub async fn debug_panic() -> Result<HttpResponse> {
-    panic!("Debug panic triggered from dashboard");
-}
-
 pub async fn get_heartbeat(data: web::Data<AppState>) -> Result<HttpResponse> {
-    let mut status = data.mcp_status.load().as_ref().clone();
-
-    // Update heartbeat to current time
-    status.last_heartbeat = Some(chrono::Utc::now());
-    status.connected = true; // Ensure server is marked as connected
-
-    // Update the stored status
-    data.mcp_status.store(Arc::new(status.clone()));
+    let status = data.mcp_status.load().as_ref().clone();
 
     let heartbeat_data = serde_json::json!({
         "timestamp": status.last_heartbeat,

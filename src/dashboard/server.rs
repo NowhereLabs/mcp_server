@@ -20,7 +20,7 @@ pub async fn run_dashboard_with_config(state: AppState, config: Config) -> std::
     tracing::info!("Starting dashboard server on http://{}", bind_address);
 
     let _enable_cors = config.development.enable_cors;
-    let enable_debug_routes = config.development.enable_debug_routes;
+    let _enable_debug_routes = config.development.enable_debug_routes;
     let app = HttpServer::new(move || {
         let app_builder = App::new()
             .app_data(web::Data::new(state.clone()))
@@ -53,12 +53,7 @@ pub async fn run_dashboard_with_config(state: AppState, config: Config) -> std::
                 web::scope("/debug")
                     .route("/config", web::get().to(handlers::debug_config))
                     .route("/state", web::get().to(handlers::debug_state))
-                    .route("/events", web::get().to(handlers::debug_events))
-                    .configure(move |cfg| {
-                        if enable_debug_routes {
-                            cfg.route("/panic", web::get().to(handlers::debug_panic));
-                        }
-                    }),
+                    .route("/events", web::get().to(handlers::debug_events)),
             )
             // Real-time endpoints
             .route("/ws", web::get().to(websocket::websocket_handler))
