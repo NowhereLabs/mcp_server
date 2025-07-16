@@ -81,6 +81,9 @@ impl Config {
     pub fn from_env() -> Result<Self, crate::server::error::McpServerError> {
         let mut config = Self::default();
 
+        // Validate critical environment variables first
+        Self::validate_env_vars()?;
+
         // Server configuration
         if let Ok(port) = env::var("DASHBOARD_PORT") {
             config.server.dashboard_port = port.parse().map_err(|_| {
@@ -181,6 +184,111 @@ impl Config {
         Ok(config)
     }
 
+    /// Validate critical environment variables before parsing
+    fn validate_env_vars() -> Result<(), crate::server::error::McpServerError> {
+        // Validate port format if set
+        if let Ok(port_str) = env::var("DASHBOARD_PORT") {
+            if port_str.parse::<u16>().is_err() {
+                return Err(crate::server::error::McpServerError::Config(
+                    "DASHBOARD_PORT must be a valid port number (1-65535)".to_string(),
+                ));
+            }
+        }
+
+        // Validate host format if set
+        if let Ok(host) = env::var("DASHBOARD_HOST") {
+            if host.is_empty() {
+                return Err(crate::server::error::McpServerError::Config(
+                    "DASHBOARD_HOST cannot be empty".to_string(),
+                ));
+            }
+            // Basic IP/hostname validation
+            if !Self::is_valid_host(&host) {
+                return Err(crate::server::error::McpServerError::Config(format!(
+                    "DASHBOARD_HOST '{host}' is not a valid host format"
+                )));
+            }
+        }
+
+        // Validate numeric environment variables
+        Self::validate_numeric_env("MAX_TOOL_EXECUTION_TIME_MS", 1000, 600000)?;
+        Self::validate_numeric_env("MAX_CONCURRENT_TOOL_CALLS", 1, 100)?;
+        Self::validate_numeric_env("MAX_FILE_SIZE_BYTES", 1024, 100 * 1024 * 1024)?;
+        Self::validate_numeric_env("RATE_LIMIT_REQUESTS_PER_MINUTE", 1, 10000)?;
+        Self::validate_numeric_env("RATE_LIMIT_BURST_SIZE", 1, 1000)?;
+        Self::validate_numeric_env("MAX_HTTP_RESPONSE_SIZE_BYTES", 1024, 50 * 1024 * 1024)?;
+        Self::validate_numeric_env("HTTP_TIMEOUT_SECONDS", 1, 300)?;
+
+        // Validate boolean environment variables
+        Self::validate_boolean_env("ENABLE_CORS")?;
+        Self::validate_boolean_env("ENABLE_DEBUG_ROUTES")?;
+
+        Ok(())
+    }
+
+    /// Validate numeric environment variable within range
+    fn validate_numeric_env(
+        var_name: &str,
+        min: u64,
+        max: u64,
+    ) -> Result<(), crate::server::error::McpServerError> {
+        if let Ok(value_str) = env::var(var_name) {
+            match value_str.parse::<u64>() {
+                Ok(value) => {
+                    if value < min || value > max {
+                        return Err(crate::server::error::McpServerError::Config(format!(
+                            "{var_name} must be between {min} and {max}, got {value}"
+                        )));
+                    }
+                }
+                Err(_) => {
+                    return Err(crate::server::error::McpServerError::Config(format!(
+                        "{var_name} must be a valid number"
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate boolean environment variable
+    fn validate_boolean_env(var_name: &str) -> Result<(), crate::server::error::McpServerError> {
+        if let Ok(value_str) = env::var(var_name) {
+            if value_str.parse::<bool>().is_err() {
+                return Err(crate::server::error::McpServerError::Config(format!(
+                    "{var_name} must be 'true' or 'false'"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Basic host validation (IP address or hostname)
+    fn is_valid_host(host: &str) -> bool {
+        // Allow localhost variations
+        if host == "localhost" || host == "0.0.0.0" || host == "127.0.0.1" || host == "::1" {
+            return true;
+        }
+
+        // Basic IPv4 validation
+        if let Ok(addr) = host.parse::<std::net::Ipv4Addr>() {
+            return !addr.is_unspecified();
+        }
+
+        // Basic IPv6 validation
+        if host.parse::<std::net::Ipv6Addr>().is_ok() {
+            return true;
+        }
+
+        // Basic hostname validation (simplified)
+        if host.len() > 253 {
+            return false;
+        }
+
+        host.chars()
+            .all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_')
+    }
+
     pub fn validate(&self) -> Result<(), crate::server::error::McpServerError> {
         // Validate port range
         if self.server.dashboard_port == 0 {
@@ -188,6 +296,9 @@ impl Config {
                 "Dashboard port must be between 1 and 65535".to_string(),
             ));
         }
+
+        // Production hardening checks
+        self.validate_production_hardening()?;
 
         // Validate timeouts
         if self.security.max_tool_execution_time_ms == 0 {
@@ -224,5 +335,65 @@ impl Config {
         }
 
         Ok(())
+    }
+
+    /// Production hardening validation
+    fn validate_production_hardening(&self) -> Result<(), crate::server::error::McpServerError> {
+        // Check for insecure configurations in production
+        if !self.is_development_mode() {
+            // Warn about insecure CORS settings
+            if self.development.enable_cors {
+                eprintln!(
+                    "WARNING: CORS is enabled in production mode. This may pose security risks."
+                );
+            }
+
+            // Warn about debug routes in production
+            if self.development.enable_debug_routes {
+                return Err(crate::server::error::McpServerError::Config(
+                    "Debug routes cannot be enabled in production mode".to_string(),
+                ));
+            }
+
+            // Warn about binding to all interfaces in production
+            if self.server.dashboard_host == "0.0.0.0" {
+                eprintln!("WARNING: Server is binding to all interfaces (0.0.0.0) in production. Consider using a specific IP.");
+            }
+
+            // Ensure reasonable security limits in production
+            if self.security.max_tool_execution_time_ms > 60000 {
+                eprintln!("WARNING: Tool execution timeout is set to {}ms, which may be too high for production", 
+                         self.security.max_tool_execution_time_ms);
+            }
+
+            if self.security.max_concurrent_tool_calls > 20 {
+                eprintln!("WARNING: Max concurrent tool calls is set to {}, which may be too high for production", 
+                         self.security.max_concurrent_tool_calls);
+            }
+
+            if self.security.max_file_size_bytes > 50 * 1024 * 1024 {
+                eprintln!("WARNING: Max file size is set to {} bytes, which may be too high for production", 
+                         self.security.max_file_size_bytes);
+            }
+
+            // Validate rate limiting is reasonable
+            if self.rate_limiting.requests_per_minute > 1000 {
+                eprintln!(
+                    "WARNING: Rate limit of {} requests per minute may be too high for production",
+                    self.rate_limiting.requests_per_minute
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Check if we're in development mode based on environment
+    fn is_development_mode(&self) -> bool {
+        // Check for common development indicators
+        env::var("RUST_LOG").is_ok_and(|log| log.contains("debug") || log.contains("trace")) ||
+        env::var("CARGO_PKG_VERSION").is_ok() || // Cargo sets this during build
+        self.development.enable_debug_routes ||
+        (self.development.enable_cors && self.server.dashboard_host == "0.0.0.0")
     }
 }

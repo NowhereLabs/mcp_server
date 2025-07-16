@@ -1,28 +1,32 @@
-# Rust MCP Server with Web Dashboard
+# Rust MCP Server with Real-time Dashboard
 
-A high-performance Model Context Protocol (MCP) server implementation in Rust with a real-time web dashboard for monitoring and control.
+A high-performance Model Context Protocol (MCP) server implementation in Rust with an integrated real-time web dashboard for monitoring and debugging.
 
 ## Features
 
-- **MCP Protocol Support**: Full implementation of the Model Context Protocol for AI assistant integration
-- **Real-time Web Dashboard**: Monitor server status, tool executions, and metrics
-- **Tool Suite**: File system operations, HTTP requests, and system information tools
-- **WebSocket & SSE Support**: Real-time updates to connected dashboard clients
-- **Thread-safe State Management**: Efficient concurrent access using Arc, RwLock, and DashMap
-- **Docker Support**: Easy deployment with Docker and docker-compose
+- **MCP Protocol Implementation**: Built with the official MCP SDK for Claude Desktop integration
+- **Real-time Web Dashboard**: Monitor server status, tool executions, and metrics via WebSocket
+- **Flexible Operation Modes**: Run MCP server only, dashboard only, or both together
+- **High-Performance Architecture**: Lock-free concurrent data structures for optimal throughput
+- **Alpine.js Frontend**: Reactive UI components with Tailwind CSS styling
+- **Docker Support**: Production-ready containerization with multi-stage builds
 
 ## Quick Start
 
 ### Prerequisites
 
-- Rust 1.82+ (for development)
+- Rust 1.82+ (for local development)
+- Node.js 20+ (for building frontend assets)
 - Docker & Docker Compose (for containerized deployment)
 
 ### Running with Docker (Recommended)
 
 ```bash
 # Build and run with docker-compose
-docker-compose up --build
+docker-compose -f docker/docker-compose.yml up --build
+
+# Or use the build script
+./docker/build-docker.sh
 
 # Access the dashboard at http://localhost:8080
 ```
@@ -30,82 +34,156 @@ docker-compose up --build
 ### Running Locally
 
 ```bash
-# Build the project
+# Install dependencies and build everything
+./scripts/build.sh
+
+# Or build components separately:
+npm install
+npm run build-css
+npm run build-js:prod
 cargo build --release
 
-# Run tests
-cargo test
-
-# Start the server
+# Run the server (defaults to both MCP and dashboard)
 cargo run --release
+
+# Run specific modes
+cargo run --release -- --mode=mcp-only    # MCP server only
+cargo run --release -- --mode=dashboard   # Dashboard only  
+cargo run --release -- --mode=both        # Both (default)
 
 # Access the dashboard at http://localhost:8080
 ```
 
-## Available Tools
-
-The MCP server provides the following tools:
-
-1. **read_file**: Read contents of a file
-2. **write_file**: Write content to a file
-3. **list_directory**: List directory contents
-4. **http_get**: Make HTTP GET requests
-5. **http_post**: Make HTTP POST requests
-6. **system_info**: Get system information
-
-## Dashboard Features
-
-- **Live Server Status**: Real-time connection and health monitoring
-- **Performance Metrics**: Tool execution statistics and response times
-- **Tool Execution**: Interactive buttons to test each tool
-- **Event History**: Live feed of server events and tool executions
-- **Session Tracking**: Monitor active client sessions
-
-## Architecture
+## Project Structure
 
 ```
-src/
-├── main.rs              # Application entry point
-├── shared/              # Shared state management
-│   ├── state.rs         # Core AppState implementation
-│   └── mod.rs
-├── server/              # MCP server implementation
-│   ├── handler.rs       # Request handling
-│   ├── tools/           # Tool implementations
-│   ├── resources/       # Resource management
-│   └── prompts/         # Prompt handling
-└── dashboard/           # Web dashboard
-    ├── server.rs        # HTTP server
-    ├── handlers.rs      # Request handlers
-    └── websocket.rs     # WebSocket support
+.
+├── config/           # Configuration files
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   ├── vitest.config.js
+│   ├── esbuild.config.js
+│   ├── rustfmt.toml
+│   └── clippy.toml
+├── docker/           # Docker deployment files
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── nginx.conf
+│   └── build-docker.sh
+├── docs/             # Documentation
+│   ├── CLAUDE.md     # Claude Code instructions
+│   └── DOCKER.md     # Docker deployment guide
+├── scripts/          # Build and utility scripts
+│   ├── build.sh
+│   └── build.js
+├── src/              # Rust source code
+│   ├── main.rs       # Application entry point
+│   ├── shared/       # Shared state and configuration
+│   │   ├── state.rs  # Thread-safe AppState
+│   │   └── config.rs # Environment configuration
+│   ├── server/       # MCP protocol implementation
+│   │   ├── mod.rs    # MCP server setup
+│   │   ├── mcp_router.rs  # Tool routing
+│   │   ├── echo_test.rs   # Example echo tool
+│   │   └── error.rs       # Error types
+│   └── dashboard/    # Web interface
+│       ├── server.rs      # Actix Web server
+│       ├── handlers.rs    # REST API endpoints
+│       └── websocket.rs   # Real-time WebSocket
+├── static/           # Frontend assets
+│   ├── css/          # Tailwind input/output
+│   └── js/           # Alpine.js components
+├── templates/        # Askama HTML templates
+└── tests/            # Test suites
+    ├── integration_tests.rs
+    ├── dashboard_tests.rs
+    └── components/   # JavaScript tests
 ```
 
-## Testing
+## Currently Implemented Tools
 
-The project includes comprehensive test coverage:
+The server currently implements an example "echo" tool for testing. To add new tools:
+
+1. Create a tool handler in `src/server/`
+2. Register it in `mcp_router.rs`
+3. Add tests for the new functionality
+
+## Architecture Highlights
+
+### State Management
+- **ArcSwap**: Lock-free reads for frequently accessed data (MCP status)
+- **DashMap**: Concurrent HashMap for session management
+- **RwLock**: For append-heavy collections (tool call history)
+- **Broadcast Channels**: Real-time event distribution to dashboard
+
+### Frontend Stack
+- **Tailwind CSS**: Utility-first styling
+- **Alpine.js**: Lightweight reactive components
+- **ESBuild**: Fast JavaScript bundling
+- **Vitest**: Component testing framework
+
+## Development
+
+### Testing
 
 ```bash
-# Run all tests
+# Run all Rust tests
 cargo test
 
 # Run specific test suites
-cargo test --test basic_integration
+cargo test --test integration_tests
 cargo test --test dashboard_tests
 
-# Test MCP protocol compliance
-./test_mcp_server.sh
+# Run JavaScript tests
+npm test
+npm run test:ui      # With UI
+npm run test:coverage # With coverage
+
+# Run tests with output
+cargo test -- --nocapture
+```
+
+### Code Quality
+
+```bash
+# Format code
+cargo fmt
+
+# Run linter (strict mode)
+cargo clippy -- -D warnings
+
+# Check for vulnerabilities  
+cargo audit
+
+# Run all checks
+cargo fmt && cargo clippy -- -D warnings && cargo test
+```
+
+### Development Mode
+
+```bash
+# Watch CSS changes
+npm run watch-css
+
+# Build JavaScript with sourcemaps
+npm run build-js:dev
+
+# Run with debug logging
+RUST_LOG=debug cargo run
 ```
 
 ## Configuration
 
-### Environment Variables
+Key environment variables:
 
-- `RUST_LOG`: Set logging level (default: `info`)
-- `RUST_BACKTRACE`: Enable backtrace on panic (default: `1`)
+- `RUST_LOG`: Logging level (default: `info`)
+- `DASHBOARD_HOST`: Dashboard bind address (default: `127.0.0.1`)
+- `DASHBOARD_PORT`: Dashboard port (default: `8080`)
+- `ENABLE_CORS`: Enable CORS for development (default: `false`)
 
-### Claude Desktop Integration
+## Claude Desktop Integration
 
-To use with Claude Desktop, copy the provided configuration:
+Add to your Claude Desktop configuration:
 
 ```json
 {
@@ -119,47 +197,29 @@ To use with Claude Desktop, copy the provided configuration:
 }
 ```
 
-## Development
+## Security Features
 
-### Adding New Tools
+- Content Security Policy headers
+- Input validation on all endpoints
+- Non-root Docker execution
+- Structured error handling without information leakage
 
-1. Implement the tool in `src/server/tools/`
-2. Register it in the tool handler
-3. Add tests for the new functionality
-4. Update the dashboard UI if needed
+## Performance
 
-### Code Quality
-
-```bash
-# Format code
-cargo fmt
-
-# Run linter
-cargo clippy -- -D warnings
-
-# Check for security issues
-cargo audit
-```
-
-## Security Considerations
-
-- File operations are sandboxed to prevent directory traversal
-- Input validation on all tool parameters
-- Rate limiting framework in place
-- Runs as non-root user in Docker
+The server is designed for high concurrency with:
+- Lock-free data structures where possible
+- Efficient state management patterns
+- Automatic cleanup of old data (tool history limited to 1000 entries)
+- WebSocket connection pooling
 
 ## License
 
-[Your License Here]
+MIT License - see LICENSE file for details
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
-## Acknowledgments
-
-Built with:
-- [Actix Web](https://actix.rs/) - High-performance web framework
-- [Tokio](https://tokio.rs/) - Asynchronous runtime
-- [DashMap](https://github.com/xacrimon/dashmap) - Concurrent HashMap
-- [Askama](https://github.com/djc/askama) - Type-safe templates
+Contributions are welcome! Please ensure:
+- All tests pass (`cargo test`)
+- Code is formatted (`cargo fmt`)
+- No clippy warnings (`cargo clippy -- -D warnings`)
+- New features include tests

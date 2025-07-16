@@ -1,6 +1,7 @@
 # Rust build artifacts
 /target/
 Cargo.lock
+*.pdb
 
 # IDE and editor files
 .idea/
@@ -27,6 +28,7 @@ Cargo.lock
 coverage/
 *.profraw
 *.profdata
+tarpaulin-report.html
 
 # OS specific files
 Thumbs.db
@@ -39,6 +41,9 @@ package-lock.json
 
 # Generated CSS
 static/css/output.css
-MIGRATE.md
-alpine-morph-checklist.markdown
-alpine-morph-checklist.markdown:Zone.Identifier
+
+# Build artifacts
+/dist/
+/build/
+*.wasm
+*.wasm.d.ts

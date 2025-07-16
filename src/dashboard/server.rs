@@ -18,7 +18,7 @@ fn add_security_headers() -> middleware::DefaultHeaders {
              connect-src 'self' ws: wss:; \
              frame-ancestors 'none'; \
              base-uri 'self'; \
-             form-action 'self';"
+             form-action 'self';",
         ))
         .add(("X-Content-Type-Options", "nosniff"))
         .add(("X-Frame-Options", "DENY"))

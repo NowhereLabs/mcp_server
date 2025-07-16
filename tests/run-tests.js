@@ -18,7 +18,7 @@ const isUI = args.includes('--ui');
 
 // Build test command
 let command = 'vitest';
-let commandArgs = [];
+let commandArgs = ['-c', './config/vitest.config.js'];
 
 if (isWatch) {
   commandArgs.push('--watch');
