@@ -4,20 +4,20 @@
   "description": "Tailwind CSS build for Rust MCP Dashboard",
   "type": "module",
   "scripts": {
-    "build": "node build.js",
-    "build:dev": "BUILD_MODE=development node build.js",
-    "build:prod": "BUILD_MODE=production node build.js",
-    "clean": "node build.js clean",
-    "watch": "node build.js watch",
-    "build-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --minify",
-    "watch-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch",
-    "build-js": "node esbuild.config.js",
-    "build-js:dev": "NODE_ENV=development node esbuild.config.js",
-    "build-js:prod": "NODE_ENV=production node esbuild.config.js",
+    "build": "node scripts/build.js",
+    "build:dev": "BUILD_MODE=development node scripts/build.js",
+    "build:prod": "BUILD_MODE=production node scripts/build.js",
+    "clean": "node scripts/build.js clean",
+    "watch": "node scripts/build.js watch",
+    "build-css": "tailwindcss -c ./config/tailwind.config.js -i ./static/css/input.css -o ./static/css/output.css --minify",
+    "watch-css": "tailwindcss -c ./config/tailwind.config.js -i ./static/css/input.css -o ./static/css/output.css --watch",
+    "build-js": "node config/esbuild.config.js",
+    "build-js:dev": "NODE_ENV=development node config/esbuild.config.js",
+    "build-js:prod": "NODE_ENV=production node config/esbuild.config.js",
     "analyze-bundle": "node -e \"const meta = require('./static/js/bundle-meta.json'); console.log(JSON.stringify(meta, null, 2));\"",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test": "vitest -c ./config/vitest.config.js",
+    "test:ui": "vitest -c ./config/vitest.config.js --ui",
+    "test:coverage": "vitest -c ./config/vitest.config.js --coverage"
   },
   "dependencies": {
     "alpinejs": "^3.13.0"

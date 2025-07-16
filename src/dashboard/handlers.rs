@@ -30,7 +30,7 @@ impl ErrorResponse {
             timestamp: chrono::Utc::now().to_rfc3339(),
         }
     }
-    
+
     fn with_details(error: String, error_type: &str, details: serde_json::Value) -> Self {
         Self {
             success: false,
@@ -71,7 +71,7 @@ fn sanitize_tool_input(input: &str) -> Result<String, ErrorResponse> {
             ERROR_TYPE_VALIDATION,
         ));
     }
-    
+
     if input.len() > 10000 {
         return Err(ErrorResponse::with_details(
             "Input exceeds maximum length".to_string(),
@@ -82,11 +82,11 @@ fn sanitize_tool_input(input: &str) -> Result<String, ErrorResponse> {
             }),
         ));
     }
-    
+
     // Check for potentially dangerous patterns
     let dangerous_patterns = ["<script", "javascript:", "vbscript:", "onload=", "onerror="];
     let input_lower = input.to_lowercase();
-    
+
     for pattern in dangerous_patterns {
         if input_lower.contains(pattern) {
             return Err(ErrorResponse::with_details(
@@ -98,7 +98,7 @@ fn sanitize_tool_input(input: &str) -> Result<String, ErrorResponse> {
             ));
         }
     }
-    
+
     // Return sanitized input
     Ok(escape_html(input))
 }
@@ -183,7 +183,9 @@ pub async fn index() -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
+            actix_web::error::ErrorInternalServerError(
+                "Internal server error: template rendering failed",
+            )
         })?))
 }
 
@@ -236,7 +238,9 @@ pub async fn get_status(data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
+            actix_web::error::ErrorInternalServerError(
+                "Internal server error: template rendering failed",
+            )
         })?))
 }
 
@@ -280,7 +284,9 @@ pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
+            actix_web::error::ErrorInternalServerError(
+                "Internal server error: template rendering failed",
+            )
         })?))
 }
 
@@ -324,7 +330,9 @@ pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
+            actix_web::error::ErrorInternalServerError(
+                "Internal server error: template rendering failed",
+            )
         })?))
 }
 
@@ -341,7 +349,9 @@ pub async fn list_tools(_data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
+            actix_web::error::ErrorInternalServerError(
+                "Internal server error: template rendering failed",
+            )
         })?))
 }
 
@@ -412,12 +422,10 @@ pub async fn execute_tool(
             Some(message) => {
                 // Sanitize the input message
                 match sanitize_tool_input(message) {
-                    Ok(sanitized_message) => {
-                        Ok(serde_json::json!({
-                            "echoed": sanitized_message,
-                            "message": format!("Echo: {}", sanitized_message)
-                        }))
-                    }
+                    Ok(sanitized_message) => Ok(serde_json::json!({
+                        "echoed": sanitized_message,
+                        "message": format!("Echo: {}", sanitized_message)
+                    })),
                     Err(error_response) => {
                         // Return structured error response
                         return Ok(HttpResponse::BadRequest().json(ExecuteToolResponse {

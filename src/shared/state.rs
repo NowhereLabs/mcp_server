@@ -7,14 +7,13 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
-/// Core application state shared between MCP server and dashboard
+/// Core application state shared between MCP server and dashboard.
 ///
-/// This state uses concurrent data structures optimized for different access patterns:
-/// - `mcp_status`: ArcSwap for frequently-read, rarely-updated data
-/// - `active_sessions`: DashMap for concurrent session management
-/// - `event_tx`: Broadcast channel for real-time event distribution
-/// - `metrics`: DashMap for concurrent metrics collection
-/// - `tool_calls`: RwLock for append-heavy tool call history
+/// Uses concurrent data structures optimized for different access patterns:
+/// - `ArcSwap` for frequently-read, rarely-updated data
+/// - `DashMap` for concurrent session and metrics management  
+/// - `RwLock` for append-heavy tool call history
+/// - `broadcast::Sender` for real-time event distribution
 #[derive(Clone)]
 pub struct AppState {
     /// Current MCP server status (connection, heartbeat, capabilities)
@@ -43,7 +42,10 @@ impl AppState {
         }
     }
 
-    /// Record a tool call execution and emit event
+    /// Records a tool call execution and emits a real-time event.
+    ///
+    /// Maintains a bounded history of tool calls (max 1000 entries) and
+    /// updates relevant metrics counters.
     pub async fn record_tool_call(
         &self,
         call: ToolCall,

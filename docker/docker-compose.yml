@@ -1,6 +1,8 @@
 services:
   mcp-server:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: rust-mcp-server
     ports:
       - "8080:8080"

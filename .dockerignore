@@ -24,7 +24,8 @@ Thumbs.db
 
 # Documentation
 README.md
-*.md
+README_DOCKER.md
+CLAUDE.md
 docs/
 
 # Test files
@@ -59,3 +60,12 @@ coverage/
 # Temporary files
 tmp/
 temp/
+*.tmp
+*.bak
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Generated assets
+static/css/output.css

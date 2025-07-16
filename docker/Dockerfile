@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Copy source files needed for Tailwind
-COPY tailwind.config.js postcss.config.js ./
+# Copy config files needed for Tailwind
+COPY config/tailwind.config.js config/postcss.config.js ./config/
 COPY templates ./templates
 COPY static/css/input.css ./static/css/
 
