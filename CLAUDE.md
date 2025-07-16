@@ -41,7 +41,7 @@ cargo test --test integration_tests
 cargo test --test dashboard_tests
 
 # Run tests for specific module
-cargo test state_tests::
+cargo test shared::state::tests::
 
 # Run JavaScript tests
 npm test                    # Run all Vitest tests
@@ -132,7 +132,7 @@ JavaScript components are bundled with ESBuild and tested with Vitest.
 ### Configuration
 
 Key environment variables:
-- `RUST_LOG`: Logging level (e.g., `rust_mcp_server=debug`)
+- `RUST_LOG`: Logging level (e.g., `rust-mcp-server=debug`)
 - `DASHBOARD_HOST`: Dashboard bind address (default: `127.0.0.1`)
 - `DASHBOARD_PORT`: Dashboard port (default: `8080`)
 - `ENABLE_CORS`: Enable CORS for development (default: `false`)
@@ -171,7 +171,7 @@ Configure in Claude Desktop settings:
     "rust-mcp-dashboard": {
       "command": "cargo",
       "args": ["run", "--release"],
-      "cwd": "/path/to/rust-mcp-server"
+      "cwd": "/path/to/mcp_server"
     }
   }
 }

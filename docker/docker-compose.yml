@@ -39,11 +39,12 @@ services:
       - ENABLE_DEBUG_ROUTES=false
     command: ["./rust-mcp-server", "dashboard"]
     volumes:
-      # Mount a temporary directory for file operations
+      # Mount a temporary directory for file operations with correct UID
       - /tmp/mcp-server:/tmp/mcp-server
       # Mount current directory for development (optional)
       - ./static:/app/static:ro
       - ./templates:/app/templates:ro
+    user: "1001:1001"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -93,12 +94,13 @@ services:
       - ENABLE_DEBUG_ROUTES=true
     command: ["./rust-mcp-server", "dashboard"]
     volumes:
-      # Mount a temporary directory for file operations
+      # Mount a temporary directory for file operations with correct UID
       - /tmp/mcp-server:/tmp/mcp-server
       # Mount current directory for development (optional)
       - ./static:/app/static:ro
       - ./templates:/app/templates:ro
       - ./.env:/app/.env:ro
+    user: "1001:1001"
     restart: unless-stopped
     networks:
       - mcp-network

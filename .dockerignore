@@ -65,7 +65,6 @@ temp/
 
 # Node.js
 node_modules/
-package-lock.json
 
 # Generated assets
 static/css/output.css

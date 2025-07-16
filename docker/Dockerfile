@@ -5,7 +5,7 @@ FROM node:20-alpine AS css-builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
 # Copy config files needed for Tailwind
@@ -65,8 +65,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
-RUN useradd -m -s /bin/bash mcpuser
+# Create a non-root user with UID 1001
+RUN useradd -m -s /bin/bash -u 1001 mcpuser
 
 # Set working directory
 WORKDIR /app

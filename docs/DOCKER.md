@@ -128,7 +128,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 ### Security Considerations
 
-1. **Non-root User**: The container runs as user `appuser` (UID 1000)
+1. **Non-root User**: The container runs as user `mcpuser` (UID 1001)
 2. **Minimal Base Image**: Uses `debian:bookworm-slim` for smaller attack surface
 3. **No Shell**: Production image doesn't include development tools
 4. **Read-only Filesystem**: Can be run with `--read-only` flag
@@ -168,9 +168,9 @@ docker-compose -f docker/docker-compose.yml logs mcp-server
 
 ### Permission issues
 
-Ensure files are accessible by UID 1000:
+Ensure files are accessible by UID 1001:
 ```bash
-chown -R 1000:1000 ./data
+chown -R 1001:1001 ./data
 ```
 
 ### Build failures
