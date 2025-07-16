@@ -5,6 +5,27 @@ use crate::dashboard::handlers;
 use crate::dashboard::websocket;
 use crate::shared::{config::Config, state::AppState};
 
+// Security middleware for CSP headers
+fn add_security_headers() -> middleware::DefaultHeaders {
+    middleware::DefaultHeaders::new()
+        .add((
+            "Content-Security-Policy",
+            "default-src 'self'; \
+             script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; \
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+             font-src 'self' https://fonts.gstatic.com; \
+             img-src 'self' data:; \
+             connect-src 'self' ws: wss:; \
+             frame-ancestors 'none'; \
+             base-uri 'self'; \
+             form-action 'self';"
+        ))
+        .add(("X-Content-Type-Options", "nosniff"))
+        .add(("X-Frame-Options", "DENY"))
+        .add(("X-XSS-Protection", "1; mode=block"))
+        .add(("Referrer-Policy", "strict-origin-when-cross-origin"))
+}
+
 // Allow dead_code: Public API convenience function for external consumers
 // Provides simplified interface using default configuration
 #[allow(dead_code)]
@@ -26,7 +47,8 @@ pub async fn run_dashboard_with_config(state: AppState, config: Config) -> std::
             .app_data(web::Data::new(state.clone()))
             .app_data(web::Data::new(config.clone()))
             .wrap(middleware::Logger::default())
-            .wrap(middleware::NormalizePath::trim());
+            .wrap(middleware::NormalizePath::trim())
+            .wrap(add_security_headers());
 
         // For now, skip conditional CORS middleware due to type complexity
         // TODO: Add proper CORS handling with actix-cors crate

@@ -22,7 +22,9 @@ export class ClientPerformanceMonitor {
         this.startMemoryMonitoring();
         this.setupObservers();
         
-        console.log('🎯 Performance monitoring started');
+        if (process.env.NODE_ENV === 'development') {
+            console.log('🎯 Performance monitoring started');
+        }
     }
     
     stopMonitoring() {
@@ -31,7 +33,9 @@ export class ClientPerformanceMonitor {
             clearInterval(this.memoryCheckInterval);
         }
         
-        console.log('📊 Performance monitoring stopped');
+        if (process.env.NODE_ENV === 'development') {
+            console.log('📊 Performance monitoring stopped');
+        }
         this.generateReport();
     }
     
@@ -52,6 +56,7 @@ export class ClientPerformanceMonitor {
     startMemoryMonitoring() {
         if (!performance.memory) return;
         
+        // Throttled memory monitoring to reduce overhead
         this.memoryCheckInterval = setInterval(() => {
             const usage = {
                 used: performance.memory.usedJSHeapSize,
@@ -62,17 +67,19 @@ export class ClientPerformanceMonitor {
             
             this.metrics.memoryUsage.push(usage);
             
-            // Keep only last 100 measurements
-            if (this.metrics.memoryUsage.length > 100) {
+            // Keep only last 20 measurements to reduce memory usage
+            if (this.metrics.memoryUsage.length > 20) {
                 this.metrics.memoryUsage.shift();
             }
             
             // Alert if memory usage is high
             if (usage.used > usage.limit * 0.9) {
-                console.warn('🚨 High memory usage detected:', usage);
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('🚨 High memory usage detected:', usage);
+                }
                 this.triggerMemoryCleanup();
             }
-        }, 5000);
+        }, 30000); // Increased from 5s to 30s for better performance
     }
     
     setupObservers() {

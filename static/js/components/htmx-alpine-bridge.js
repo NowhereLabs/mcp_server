@@ -94,8 +94,8 @@ export function initializeHtmxAlpineBridge() {
     });
 }
 
-// Global dashboard store for cross-component communication
-window.addEventListener('alpine:init', () => {
+// Dashboard store for cross-component communication
+document.addEventListener('alpine:init', () => {
     Alpine.store('dashboard', {
         sseConnected: false,
         lastUpdate: null,

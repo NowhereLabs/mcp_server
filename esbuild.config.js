@@ -1,6 +1,7 @@
 // esbuild configuration for Alpine.js optimization
 import { build } from 'esbuild';
 import { resolve } from 'path';
+import { statSync, writeFileSync } from 'fs';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -14,7 +15,7 @@ const config = {
   format: 'iife',
   platform: 'browser',
   
-  // Optimization settings
+  // Enhanced optimization settings
   treeShaking: true,
   metafile: true,
   
@@ -30,8 +31,10 @@ const config = {
   // Bundle splitting for better caching
   splitting: false, // Keep false for IIFE format
   
-  // Optimize for size
+  // Enhanced size optimization
   dropLabels: isDev ? [] : ['DEV'],
+  drop: isDev ? [] : ['console', 'debugger'],
+  mangleProps: isDev ? undefined : /^_/,
   
   // Banner to identify build
   banner: {
@@ -43,11 +46,35 @@ const config = {
     {
       name: 'alpine-optimizer',
       setup(build) {
-        // Log bundle size
+        // Remove development-only code (disabled for now to avoid syntax errors)
+        // Will rely on the 'drop' option instead
+        // build.onLoad({ filter: /\.js$/ }, async (args) => {
+        //   if (isDev) return null;
+        //   // Code optimization disabled - using esbuild's drop option instead
+        //   return null;
+        // });
+        
+        // Log bundle size and analysis
         build.onEnd((result) => {
           if (result.metafile) {
             const outputSize = Object.values(result.metafile.outputs)[0]?.bytes || 0;
-            console.log(`Bundle size: ${(outputSize / 1024).toFixed(1)}KB`);
+            console.log(`📦 Bundle size: ${(outputSize / 1024).toFixed(1)}KB`);
+            
+            // Show top contributors to bundle size
+            const outputs = Object.values(result.metafile.outputs);
+            if (outputs.length > 0 && outputs[0].inputs) {
+              console.log('📊 Top bundle contributors:');
+              const sortedInputs = Object.entries(outputs[0].inputs)
+                .sort((a, b) => b[1].bytesInOutput - a[1].bytesInOutput)
+                .slice(0, 5);
+              
+              sortedInputs.forEach(([file, info]) => {
+                const fileName = file.split('/').pop();
+                const size = (info.bytesInOutput / 1024).toFixed(1);
+                const percentage = ((info.bytesInOutput / outputSize) * 100).toFixed(1);
+                console.log(`  ${fileName}: ${size}KB (${percentage}%)`);
+              });
+            }
           }
         });
       },
@@ -57,15 +84,40 @@ const config = {
 
 export default config;
 
+/**
+ * Get file size in human-readable format using Node.js fs
+ * @param {string} filePath - Path to the file
+ * @returns {string} - Human-readable file size
+ */
+function getFileSize(filePath) {
+  try {
+    const stats = statSync(filePath);
+    const bytes = stats.size;
+    
+    if (bytes === 0) return '0 B';
+    
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  } catch (error) {
+    return 'N/A';
+  }
+}
+
 // Build function for package.json scripts
 export async function buildProduction() {
   try {
     const result = await build(config);
     
     if (result.metafile) {
-      // Write metafile for analysis
-      const fs = await import('fs');
-      fs.writeFileSync('static/js/bundle-meta.json', JSON.stringify(result.metafile, null, 2));
+      // Write metafile for analysis using Node.js fs
+      writeFileSync('static/js/bundle-meta.json', JSON.stringify(result.metafile, null, 2));
+      
+      // Show bundle size using Node.js instead of shell commands
+      const bundleSize = getFileSize('static/js/dashboard.min.js');
+      console.log(`📦 Bundle size: ${bundleSize}`);
     }
     
     console.log('✅ Production build completed successfully');
@@ -89,6 +141,31 @@ export async function buildDevelopment() {
     };
     
     const result = await build(devConfig);
+    
+    if (result.metafile) {
+      // Write metafile for development analysis
+      writeFileSync('static/js/bundle-meta.json', JSON.stringify(result.metafile, null, 2));
+      
+      // Show detailed bundle information in development
+      const bundleSize = getFileSize('static/js/dashboard.min.js');
+      console.log(`📦 Bundle size: ${bundleSize}`);
+      
+      // Show component breakdown
+      const outputs = Object.values(result.metafile.outputs);
+      if (outputs.length > 0 && outputs[0].inputs) {
+        console.log('📊 Component breakdown:');
+        const sortedInputs = Object.entries(outputs[0].inputs)
+          .sort((a, b) => b[1].bytesInOutput - a[1].bytesInOutput)
+          .slice(0, 5);
+        
+        sortedInputs.forEach(([file, info]) => {
+          const fileName = file.split('/').pop();
+          const size = (info.bytesInOutput / 1024).toFixed(1);
+          console.log(`  ${fileName}: ${size}KB`);
+        });
+      }
+    }
+    
     console.log('✅ Development build completed successfully');
   } catch (error) {
     console.error('❌ Development build failed:', error);

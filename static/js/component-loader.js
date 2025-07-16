@@ -79,7 +79,10 @@ export class ComponentPerformanceMonitor {
         const startTime = this.loadTimes.get(componentName);
         if (startTime) {
             const duration = performance.now() - startTime;
-            console.log(`Component "${componentName}" loaded in ${duration.toFixed(2)}ms`);
+            // Only log in development mode
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`Component "${componentName}" loaded in ${duration.toFixed(2)}ms`);
+            }
             return duration;
         }
         return 0;

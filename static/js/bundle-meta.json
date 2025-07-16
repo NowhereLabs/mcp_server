@@ -6,12 +6,12 @@
       "format": "esm"
     },
     "static/js/component-loader.js": {
-      "bytes": 4663,
+      "bytes": 4783,
       "imports": [],
       "format": "esm"
     },
     "static/js/performance-monitor.js": {
-      "bytes": 8371,
+      "bytes": 8722,
       "imports": [],
       "format": "esm"
     },
@@ -32,7 +32,7 @@
       "format": "esm"
     },
     "static/js/components/htmx-alpine-bridge.js": {
-      "bytes": 4927,
+      "bytes": 4922,
       "imports": [],
       "format": "esm"
     },
@@ -41,28 +41,50 @@
       "imports": [],
       "format": "esm"
     },
-    "static/js/components/echo-tool.js": {
-      "bytes": 2100,
+    "static/js/components/error-boundary.js": {
+      "bytes": 9255,
       "imports": [],
       "format": "esm"
     },
+    "static/js/utils/error-handler.js": {
+      "bytes": 11928,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/echo-tool.js": {
+      "bytes": 8136,
+      "imports": [
+        {
+          "path": "static/js/utils/error-handler.js",
+          "kind": "import-statement",
+          "original": "../utils/error-handler.js"
+        }
+      ],
+      "format": "esm"
+    },
     "static/js/components/metrics-dashboard.js": {
-      "bytes": 1107,
+      "bytes": 2623,
       "imports": [],
       "format": "esm"
     },
     "static/js/components/event-stream.js": {
-      "bytes": 1976,
+      "bytes": 7834,
       "imports": [],
       "format": "esm"
     },
     "static/js/components/notification-system.js": {
-      "bytes": 1529,
-      "imports": [],
+      "bytes": 8499,
+      "imports": [
+        {
+          "path": "static/js/utils/error-handler.js",
+          "kind": "import-statement",
+          "original": "../utils/error-handler.js"
+        }
+      ],
       "format": "esm"
     },
     "static/js/alpine-components-optimized.js": {
-      "bytes": 5540,
+      "bytes": 5707,
       "imports": [
         {
           "path": "node_modules/alpinejs/dist/module.esm.js",
@@ -100,6 +122,11 @@
           "original": "./components/dashboard-controls.js"
         },
         {
+          "path": "static/js/components/error-boundary.js",
+          "kind": "import-statement",
+          "original": "./components/error-boundary.js"
+        },
+        {
           "path": "static/js/components/echo-tool.js",
           "kind": "dynamic-import",
           "original": "./components/echo-tool.js"
@@ -129,44 +156,50 @@
       "exports": [],
       "entryPoint": "static/js/alpine-components-optimized.js",
       "inputs": {
+        "static/js/utils/error-handler.js": {
+          "bytesInOutput": 2963
+        },
         "static/js/components/echo-tool.js": {
-          "bytesInOutput": 1141
+          "bytesInOutput": 2314
         },
         "static/js/components/metrics-dashboard.js": {
-          "bytesInOutput": 607
+          "bytesInOutput": 564
         },
         "static/js/components/event-stream.js": {
-          "bytesInOutput": 1005
+          "bytesInOutput": 2006
         },
         "static/js/components/notification-system.js": {
-          "bytesInOutput": 772
+          "bytesInOutput": 1961
         },
         "node_modules/alpinejs/dist/module.esm.js": {
-          "bytesInOutput": 44647
+          "bytesInOutput": 41205
         },
         "static/js/component-loader.js": {
-          "bytesInOutput": 2054
+          "bytesInOutput": 1923
         },
         "static/js/performance-monitor.js": {
-          "bytesInOutput": 4105
+          "bytesInOutput": 3887
         },
         "static/js/components/optimized-components.js": {
-          "bytesInOutput": 3917
+          "bytesInOutput": 3686
         },
         "static/js/components/tool-executor.js": {
           "bytesInOutput": 2113
         },
         "static/js/components/htmx-alpine-bridge.js": {
-          "bytesInOutput": 2574
+          "bytesInOutput": 2378
         },
         "static/js/components/dashboard-controls.js": {
-          "bytesInOutput": 2891
+          "bytesInOutput": 2843
+        },
+        "static/js/components/error-boundary.js": {
+          "bytesInOutput": 3182
         },
         "static/js/alpine-components-optimized.js": {
-          "bytesInOutput": 1599
+          "bytesInOutput": 1450
         }
       },
-      "bytes": 67633
+      "bytes": 72683
     }
   }
 }

@@ -14,6 +14,7 @@ import {
 import { toolExecutor } from './components/tool-executor.js';
 import { initializeHtmxAlpineBridge } from './components/htmx-alpine-bridge.js';
 import { dashboardControls, enhancedEventStream } from './components/dashboard-controls.js';
+import { errorBoundary, withErrorBoundary } from './components/error-boundary.js';
 
 // Production optimization: Use optimized components
 const USE_OPTIMIZED = process.env.NODE_ENV === 'production';
@@ -39,6 +40,8 @@ componentLoader.register('notificationSystem', async () => {
 window.toolExecutor = toolExecutor;
 window.dashboardControls = dashboardControls;
 window.enhancedEventStream = enhancedEventStream;
+window.errorBoundary = errorBoundary;
+window.withErrorBoundary = withErrorBoundary;
 
 // Performance monitoring setup
 if (process.env.DEBUG === 'true') {

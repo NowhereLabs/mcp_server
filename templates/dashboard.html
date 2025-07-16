@@ -377,81 +377,90 @@
         Alpine.store('notifications').add('Live events disconnected', 'warning');
     });
 
-    // Global tool execution function - used by available tools section
-    window.executeTool = async function(toolName) {
-        // Execute tools with default arguments, including echo
-        const defaultArgs = getDefaultArguments(toolName);
-        
-        // Disable the button during execution
-        const button = document.querySelector(`button[data-tool="${toolName}"]`);
-        if (button) {
-            button.disabled = true;
-            button.innerHTML = `
-                <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                Executing...
-            `;
-        }
-        
-        try {
-            // Use the enhanced tool execution system
-            const result = await Alpine.store('toolExecution').executeGlobal(toolName, defaultArgs);
+    // Dashboard utilities namespace - avoid global pollution
+    const DashboardUtils = {
+        // Tool execution function
+        async executeTool(toolName) {
+            const defaultArgs = this.getDefaultArguments(toolName);
             
-            if (result.success) {
-                if (toolName === 'echo') {
-                    const message = result.result?.message || result.result?.echoed || 'Hello from tool execution!';
-                    Alpine.store('notifications').add(`Echo tool executed: "${message}"`, 'success');
-                } else {
-                    Alpine.store('notifications').add(`Tool "${toolName}" executed successfully!`, 'success');
-                }
-            } else {
-                Alpine.store('notifications').add(`Tool execution failed: ${result.error}`, 'error');
-            }
-            
-        } catch (error) {
-            Alpine.store('notifications').add(`Error executing tool: ${error.message}`, 'error');
-        } finally {
-            // Re-enable the button
+            // Disable the button during execution
+            const button = document.querySelector(`button[data-tool="${toolName}"]`);
             if (button) {
-                button.disabled = false;
+                button.disabled = true;
                 button.innerHTML = `
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
-                    Execute Tool
+                    Executing...
                 `;
             }
-        }
-    };
-
-    // Global helper functions
-    window.showToolSchema = function(toolName) {
-        const schemas = {
-            'echo': {
-                type: 'object',
-                properties: {
-                    message: {
-                        type: 'string',
-                        description: 'The message to echo back'
+            
+            try {
+                // Use the enhanced tool execution system
+                const result = await Alpine.store('toolExecution').executeGlobal(toolName, defaultArgs);
+                
+                if (result.success) {
+                    if (toolName === 'echo') {
+                        const message = result.result?.message || result.result?.echoed || 'Hello from tool execution!';
+                        Alpine.store('notifications').add(`Echo tool executed: "${message}"`, 'success');
+                    } else {
+                        Alpine.store('notifications').add(`Tool "${toolName}" executed successfully!`, 'success');
                     }
-                },
-                required: ['message']
+                } else {
+                    Alpine.store('notifications').add(`Tool execution failed: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                Alpine.store('notifications').add(`Error executing tool: ${error.message}`, 'error');
+            } finally {
+                // Re-enable the button
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = `
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        Execute Tool
+                    `;
+                }
             }
-        };
+        },
+
+        // Show tool schema function
+        showToolSchema(toolName) {
+            const schemas = {
+                'echo': {
+                    type: 'object',
+                    properties: {
+                        message: {
+                            type: 'string',
+                            description: 'The message to echo back'
+                        }
+                    },
+                    required: ['message']
+                }
+            };
+            
+            const schema = schemas[toolName] || { error: 'Schema not available' };
+            Alpine.store('notifications').add(`Schema for ${toolName}:\n${JSON.stringify(schema, null, 2)}`, 'info');
+        },
         
-        const schema = schemas[toolName] || { error: 'Schema not available' };
-        Alpine.store('notifications').add(`Schema for ${toolName}:\n${JSON.stringify(schema, null, 2)}`, 'info');
+        // Get default arguments for tools
+        getDefaultArguments(toolName) {
+            switch (toolName) {
+                case 'echo':
+                    return { message: 'Hello from tool execution!' };
+                default:
+                    return {};
+            }
+        }
     };
     
-    // Get default arguments for tools
-    function getDefaultArguments(toolName) {
-        switch (toolName) {
-            case 'echo':
-                return { message: 'Hello from tool execution!' };
-            default:
-                return {};
-        }
-    }
+    // Expose utilities through Alpine.js store instead of global window
+    Alpine.store('dashboardUtils', DashboardUtils);
+    
+    // Legacy support - create wrapper functions that use the store
+    window.executeTool = (toolName) => Alpine.store('dashboardUtils').executeTool(toolName);
+    window.showToolSchema = (toolName) => Alpine.store('dashboardUtils').showToolSchema(toolName);
 </script>
 {% endblock %}
