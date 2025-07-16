@@ -1,5 +1,8 @@
 # Rust MCP Server with Real-time Dashboard
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue)](https://github.com/NowhereLabs/mcp_server/pkgs/container/rust-mcp-server)
+
 A high-performance Model Context Protocol (MCP) server implementation in Rust with an integrated real-time web dashboard for monitoring and debugging.
 
 ## Features
@@ -19,7 +22,22 @@ A high-performance Model Context Protocol (MCP) server implementation in Rust wi
 - Node.js 20+ (for building frontend assets)
 - Docker & Docker Compose (for containerized deployment)
 
-### Running with Docker (Recommended)
+### Installation Options
+
+#### Using GitHub Packages Docker Image
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/nowherelabs/rust-mcp-server:latest
+
+# Run with docker-compose
+docker run -p 8080:8080 ghcr.io/nowherelabs/rust-mcp-server:latest
+
+# Or use a specific version
+docker pull ghcr.io/nowherelabs/rust-mcp-server:v0.1.1
+```
+
+#### Building from Source
 
 ```bash
 # Build and run with docker-compose

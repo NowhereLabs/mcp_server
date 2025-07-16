@@ -1,0 +1,55 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Docker Image
+          
+          Pull the Docker image:
+          ```bash
+          docker pull ghcr.io/nowherelabs/rust-mcp-server:${{ steps.version.outputs.VERSION }}
+          ```
+          
+          ## Installation
+          
+          ### Using Cargo
+          ```bash
+          cargo install rust-mcp-server
+          ```
+          
+          ### Using Docker
+          ```bash
+          docker run -p 8080:8080 ghcr.io/nowherelabs/rust-mcp-server:latest
+          ```
+          
+          ## What's Changed
+          
+          Please see the [CHANGELOG](https://github.com/NowhereLabs/mcp_server/blob/main/CHANGELOG.md) for details.
+          
+          **Full Changelog**: https://github.com/NowhereLabs/mcp_server/compare/v0.1.0...${{ steps.version.outputs.VERSION }}
