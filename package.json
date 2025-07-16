@@ -2,13 +2,36 @@
   "name": "rust-mcp-dashboard",
   "version": "1.0.0",
   "description": "Tailwind CSS build for Rust MCP Dashboard",
+  "type": "module",
   "scripts": {
+    "build": "node build.js",
+    "build:dev": "BUILD_MODE=development node build.js",
+    "build:prod": "BUILD_MODE=production node build.js",
+    "clean": "node build.js clean",
+    "watch": "node build.js watch",
     "build-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --minify",
-    "watch-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch"
+    "watch-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch",
+    "build-js": "node esbuild.config.js",
+    "build-js:dev": "NODE_ENV=development node esbuild.config.js",
+    "build-js:prod": "NODE_ENV=production node esbuild.config.js",
+    "analyze-bundle": "node -e \"const meta = require('./static/js/bundle-meta.json'); console.log(JSON.stringify(meta, null, 2));\"",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "alpinejs": "^3.13.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32"
+    "postcss": "^8.4.32",
+    "esbuild": "^0.19.0",
+    "rimraf": "^5.0.5",
+    "vitest": "^1.2.0",
+    "@vitest/ui": "^1.2.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "jsdom": "^24.0.0",
+    "@testing-library/dom": "^9.3.0"
   }
 }

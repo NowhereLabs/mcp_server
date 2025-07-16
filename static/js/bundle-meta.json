@@ -1,0 +1,205 @@
+{
+  "inputs": {
+    "node_modules/alpinejs/dist/module.esm.js": {
+      "bytes": 102519,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/component-loader.js": {
+      "bytes": 4783,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/performance-monitor.js": {
+      "bytes": 8722,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/optimized-components.js": {
+      "bytes": 9368,
+      "imports": [
+        {
+          "path": "static/js/component-loader.js",
+          "kind": "import-statement",
+          "original": "../component-loader.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/components/tool-executor.js": {
+      "bytes": 4948,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/htmx-alpine-bridge.js": {
+      "bytes": 4922,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/dashboard-controls.js": {
+      "bytes": 5563,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/error-boundary.js": {
+      "bytes": 9255,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/utils/error-handler.js": {
+      "bytes": 11928,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/echo-tool.js": {
+      "bytes": 8136,
+      "imports": [
+        {
+          "path": "static/js/utils/error-handler.js",
+          "kind": "import-statement",
+          "original": "../utils/error-handler.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/components/metrics-dashboard.js": {
+      "bytes": 2623,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/event-stream.js": {
+      "bytes": 7834,
+      "imports": [],
+      "format": "esm"
+    },
+    "static/js/components/notification-system.js": {
+      "bytes": 8499,
+      "imports": [
+        {
+          "path": "static/js/utils/error-handler.js",
+          "kind": "import-statement",
+          "original": "../utils/error-handler.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/alpine-components-optimized.js": {
+      "bytes": 5707,
+      "imports": [
+        {
+          "path": "node_modules/alpinejs/dist/module.esm.js",
+          "kind": "import-statement",
+          "original": "alpinejs"
+        },
+        {
+          "path": "static/js/component-loader.js",
+          "kind": "import-statement",
+          "original": "./component-loader.js"
+        },
+        {
+          "path": "static/js/performance-monitor.js",
+          "kind": "import-statement",
+          "original": "./performance-monitor.js"
+        },
+        {
+          "path": "static/js/components/optimized-components.js",
+          "kind": "import-statement",
+          "original": "./components/optimized-components.js"
+        },
+        {
+          "path": "static/js/components/tool-executor.js",
+          "kind": "import-statement",
+          "original": "./components/tool-executor.js"
+        },
+        {
+          "path": "static/js/components/htmx-alpine-bridge.js",
+          "kind": "import-statement",
+          "original": "./components/htmx-alpine-bridge.js"
+        },
+        {
+          "path": "static/js/components/dashboard-controls.js",
+          "kind": "import-statement",
+          "original": "./components/dashboard-controls.js"
+        },
+        {
+          "path": "static/js/components/error-boundary.js",
+          "kind": "import-statement",
+          "original": "./components/error-boundary.js"
+        },
+        {
+          "path": "static/js/components/echo-tool.js",
+          "kind": "dynamic-import",
+          "original": "./components/echo-tool.js"
+        },
+        {
+          "path": "static/js/components/metrics-dashboard.js",
+          "kind": "dynamic-import",
+          "original": "./components/metrics-dashboard.js"
+        },
+        {
+          "path": "static/js/components/event-stream.js",
+          "kind": "dynamic-import",
+          "original": "./components/event-stream.js"
+        },
+        {
+          "path": "static/js/components/notification-system.js",
+          "kind": "dynamic-import",
+          "original": "./components/notification-system.js"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "static/js/dashboard.min.js": {
+      "imports": [],
+      "exports": [],
+      "entryPoint": "static/js/alpine-components-optimized.js",
+      "inputs": {
+        "static/js/utils/error-handler.js": {
+          "bytesInOutput": 2963
+        },
+        "static/js/components/echo-tool.js": {
+          "bytesInOutput": 2314
+        },
+        "static/js/components/metrics-dashboard.js": {
+          "bytesInOutput": 564
+        },
+        "static/js/components/event-stream.js": {
+          "bytesInOutput": 2006
+        },
+        "static/js/components/notification-system.js": {
+          "bytesInOutput": 1961
+        },
+        "node_modules/alpinejs/dist/module.esm.js": {
+          "bytesInOutput": 41205
+        },
+        "static/js/component-loader.js": {
+          "bytesInOutput": 1923
+        },
+        "static/js/performance-monitor.js": {
+          "bytesInOutput": 3887
+        },
+        "static/js/components/optimized-components.js": {
+          "bytesInOutput": 3686
+        },
+        "static/js/components/tool-executor.js": {
+          "bytesInOutput": 2113
+        },
+        "static/js/components/htmx-alpine-bridge.js": {
+          "bytesInOutput": 2378
+        },
+        "static/js/components/dashboard-controls.js": {
+          "bytesInOutput": 2843
+        },
+        "static/js/components/error-boundary.js": {
+          "bytesInOutput": 3182
+        },
+        "static/js/alpine-components-optimized.js": {
+          "bytesInOutput": 1450
+        }
+      },
+      "bytes": 72683
+    }
+  }
+}

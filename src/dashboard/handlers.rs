@@ -10,6 +10,99 @@ use crate::shared::{
     state::{AppState, ToolCall, ToolCallResult},
 };
 
+// Standard error response structure
+#[derive(Serialize)]
+struct ErrorResponse {
+    success: bool,
+    error: String,
+    error_type: String,
+    details: Option<serde_json::Value>,
+    timestamp: String,
+}
+
+impl ErrorResponse {
+    fn new(error: String, error_type: &str) -> Self {
+        Self {
+            success: false,
+            error,
+            error_type: error_type.to_string(),
+            details: None,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+    
+    fn with_details(error: String, error_type: &str, details: serde_json::Value) -> Self {
+        Self {
+            success: false,
+            error,
+            error_type: error_type.to_string(),
+            details: Some(details),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+}
+
+// HTML escaping utility function
+fn escape_html(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+        .replace('/', "&#x2F;")
+}
+
+// Error type constants
+const ERROR_TYPE_VALIDATION: &str = "validation";
+const ERROR_TYPE_SECURITY: &str = "security";
+// Future error types - allow dead code for now
+#[allow(dead_code)]
+const ERROR_TYPE_SYSTEM: &str = "system";
+#[allow(dead_code)]
+const ERROR_TYPE_NETWORK: &str = "network";
+
+// Input sanitization for tool parameters
+fn sanitize_tool_input(input: &str) -> Result<String, ErrorResponse> {
+    // Basic input validation
+    if input.is_empty() {
+        return Err(ErrorResponse::new(
+            "Input cannot be empty".to_string(),
+            ERROR_TYPE_VALIDATION,
+        ));
+    }
+    
+    if input.len() > 10000 {
+        return Err(ErrorResponse::with_details(
+            "Input exceeds maximum length".to_string(),
+            ERROR_TYPE_VALIDATION,
+            serde_json::json!({
+                "max_length": 10000,
+                "actual_length": input.len()
+            }),
+        ));
+    }
+    
+    // Check for potentially dangerous patterns
+    let dangerous_patterns = ["<script", "javascript:", "vbscript:", "onload=", "onerror="];
+    let input_lower = input.to_lowercase();
+    
+    for pattern in dangerous_patterns {
+        if input_lower.contains(pattern) {
+            return Err(ErrorResponse::with_details(
+                "Input contains potentially dangerous content".to_string(),
+                ERROR_TYPE_SECURITY,
+                serde_json::json!({
+                    "detected_pattern": pattern
+                }),
+            ));
+        }
+    }
+    
+    // Return sanitized input
+    Ok(escape_html(input))
+}
+
 #[derive(Template)]
 #[template(path = "dashboard.html")]
 struct DashboardTemplate {
@@ -90,7 +183,7 @@ pub async fn index() -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Template rendering failed")
+            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
         })?))
 }
 
@@ -143,7 +236,7 @@ pub async fn get_status(data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Template rendering failed")
+            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
         })?))
 }
 
@@ -187,7 +280,7 @@ pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Template rendering failed")
+            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
         })?))
 }
 
@@ -231,7 +324,7 @@ pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Template rendering failed")
+            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
         })?))
 }
 
@@ -248,7 +341,7 @@ pub async fn list_tools(_data: web::Data<AppState>) -> Result<HttpResponse> {
         .content_type("text/html")
         .body(template.render().map_err(|e| {
             tracing::error!("Template rendering error: {}", e);
-            actix_web::error::ErrorInternalServerError("Template rendering failed")
+            actix_web::error::ErrorInternalServerError("Internal server error: template rendering failed")
         })?))
 }
 
@@ -317,9 +410,37 @@ pub async fn execute_tool(
     let result: Result<serde_json::Value, String> = match payload.name.as_str() {
         "echo" => match payload.arguments.get("message").and_then(|v| v.as_str()) {
             Some(message) => {
-                Ok(serde_json::json!({"echoed": message, "message": format!("Echo: {message}")}))
+                // Sanitize the input message
+                match sanitize_tool_input(message) {
+                    Ok(sanitized_message) => {
+                        Ok(serde_json::json!({
+                            "echoed": sanitized_message,
+                            "message": format!("Echo: {}", sanitized_message)
+                        }))
+                    }
+                    Err(error_response) => {
+                        // Return structured error response
+                        return Ok(HttpResponse::BadRequest().json(ExecuteToolResponse {
+                            success: false,
+                            result: None,
+                            error: Some(error_response.error),
+                            tool_call_id: tool_call_id.to_string(),
+                        }));
+                    }
+                }
             }
-            None => Err("Missing message parameter".to_string()),
+            None => {
+                let error_response = ErrorResponse::new(
+                    "Missing required parameter: message".to_string(),
+                    ERROR_TYPE_VALIDATION,
+                );
+                return Ok(HttpResponse::BadRequest().json(ExecuteToolResponse {
+                    success: false,
+                    result: None,
+                    error: Some(error_response.error),
+                    tool_call_id: tool_call_id.to_string(),
+                }));
+            }
         },
         _ => {
             let error_msg = format!(
