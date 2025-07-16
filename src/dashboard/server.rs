@@ -1,8 +1,9 @@
+use actix_files::Files;
+use actix_web::{middleware, web, App, HttpServer};
+
 use crate::dashboard::handlers;
 use crate::dashboard::websocket;
 use crate::shared::{config::Config, state::AppState};
-use actix_files::Files;
-use actix_web::{middleware, web, App, HttpServer};
 
 // Allow dead_code: Public API convenience function for external consumers
 // Provides simplified interface using default configuration

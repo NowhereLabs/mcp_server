@@ -1,28 +1,79 @@
-<div class="metrics-component">
-    <div class="metrics-grid">
-        <div class="metric-item">
-            <div class="metric-value">{{ metrics.total_tool_calls }}</div>
-            <div class="metric-label">Total Tool Calls</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-8 lg:p-10 border border-blue-700 hover:border-blue-600 transition-all duration-300 transform hover:-translate-y-1 relative aspect-square">
+        <div class="absolute bottom-4 right-4">
+            <svg class="w-6 h-6 text-blue-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
         </div>
-        <div class="metric-item">
-            <div class="metric-value">{{ metrics.success_rate }}%</div>
-            <div class="metric-label">Success Rate</div>
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-3xl lg:text-4xl font-bold text-blue-300 mb-2">{{ metrics.total_tool_calls }}</div>
+            <div class="text-sm text-blue-400 font-medium">Total Tool Calls</div>
         </div>
-        <div class="metric-item">
-            <div class="metric-value">{{ metrics.active_sessions }}</div>
-            <div class="metric-label">Active Sessions</div>
+    </div>
+    
+    <div class="bg-gradient-to-br from-{% if metrics.success_rate >= 90.0 %}green-900 to-green-800 border-green-700 hover:border-green-600{% else if metrics.success_rate >= 70.0 %}yellow-900 to-yellow-800 border-yellow-700 hover:border-yellow-600{% else %}red-900 to-red-800 border-red-700 hover:border-red-600{% endif %} rounded-xl p-8 lg:p-10 border transition-all duration-300 transform hover:-translate-y-1 relative aspect-square">
+        <div class="absolute bottom-4 right-4">
+            <svg class="w-6 h-6 {% if metrics.success_rate >= 90.0 %}text-green-400{% else if metrics.success_rate >= 70.0 %}text-yellow-400{% else %}text-red-400{% endif %} opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {% if metrics.success_rate >= 90.0 %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                {% else if metrics.success_rate >= 70.0 %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                {% endif %}
+            </svg>
         </div>
-        <div class="metric-item">
-            <div class="metric-value">{{ metrics.avg_duration_ms }}ms</div>
-            <div class="metric-label">Avg Duration</div>
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-3xl lg:text-4xl font-bold {% if metrics.success_rate >= 90.0 %}text-green-300{% else if metrics.success_rate >= 70.0 %}text-yellow-300{% else %}text-red-300{% endif %} mb-2">{{ metrics.success_rate }}%</div>
+            <div class="text-sm {% if metrics.success_rate >= 90.0 %}text-green-400{% else if metrics.success_rate >= 70.0 %}text-yellow-400{% else %}text-red-400{% endif %} font-medium">Success Rate</div>
         </div>
-        <div class="metric-item">
-            <div class="metric-value">{{ metrics.tools_available }}</div>
-            <div class="metric-label">Tools Available</div>
+    </div>
+    
+    <div class="bg-gradient-to-br from-purple-900 to-purple-800 rounded-xl p-8 lg:p-10 border border-purple-700 hover:border-purple-600 transition-all duration-300 transform hover:-translate-y-1 relative aspect-square">
+        <div class="absolute bottom-4 right-4">
+            <svg class="w-6 h-6 text-purple-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
         </div>
-        <div class="metric-item">
-            <div class="metric-value">{{ metrics.resources_available }}</div>
-            <div class="metric-label">Resources Available</div>
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-3xl lg:text-4xl font-bold text-purple-300 mb-2">{{ metrics.active_sessions }}</div>
+            <div class="text-sm text-purple-400 font-medium">Active Sessions</div>
+        </div>
+    </div>
+    
+    <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-xl p-8 lg:p-10 border border-indigo-700 hover:border-indigo-600 transition-all duration-300 transform hover:-translate-y-1 relative aspect-square">
+        <div class="absolute bottom-4 right-4">
+            <svg class="w-6 h-6 text-indigo-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-3xl lg:text-4xl font-bold text-indigo-300 mb-2">{{ metrics.avg_duration_ms }}<span class="text-lg">ms</span></div>
+            <div class="text-sm text-indigo-400 font-medium">Avg Duration</div>
+        </div>
+    </div>
+    
+    <div class="bg-gradient-to-br from-teal-900 to-teal-800 rounded-xl p-8 lg:p-10 border border-teal-700 hover:border-teal-600 transition-all duration-300 transform hover:-translate-y-1 relative aspect-square">
+        <div class="absolute bottom-4 right-4">
+            <svg class="w-6 h-6 text-teal-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+            </svg>
+        </div>
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-3xl lg:text-4xl font-bold text-teal-300 mb-2">{{ metrics.tools_available }}</div>
+            <div class="text-sm text-teal-400 font-medium">Tools Available</div>
+        </div>
+    </div>
+    
+    <div class="bg-gradient-to-br from-orange-900 to-orange-800 rounded-xl p-8 lg:p-10 border border-orange-700 hover:border-orange-600 transition-all duration-300 transform hover:-translate-y-1 relative aspect-square">
+        <div class="absolute bottom-4 right-4">
+            <svg class="w-6 h-6 text-orange-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707L16.414 6.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="text-3xl lg:text-4xl font-bold text-orange-300 mb-2">{{ metrics.resources_available }}</div>
+            <div class="text-sm text-orange-400 font-medium">Resources Available</div>
         </div>
     </div>
 </div>

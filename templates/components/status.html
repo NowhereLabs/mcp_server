@@ -1,27 +1,84 @@
-<div class="status-component">
-    <div class="status-info">
-        <p>
-            <span class="status-indicator {{ status_class }}" id="status-indicator"></span>
-            {{ status_text }}
-            <span class="heartbeat-pulse" id="heartbeat-pulse">💓</span>
-        </p>
-        <div class="server-info">
-            <p>Server: {{ server_name }} v{{ server_version }}</p>
-            <p>Capabilities: {{ capabilities.join(", ") }}</p>
-            <p>Started: {{ started_at }}</p>
+<div class="space-y-6">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <span class="inline-block w-4 h-4 rounded-full {% if status_class == "connected" %}bg-green-500 neon-glow{% else if status_class == "disconnected" %}bg-red-500{% else %}bg-gray-400{% endif %} status-indicator animate-pulse-slow" id="status-indicator"></span>
+                <span class="absolute -top-1 -right-1 w-2 h-2 bg-green-300 rounded-full animate-ping {% if status_class != "connected" %}hidden{% endif %}"></span>
+            </div>
+            <span class="font-semibold text-lg text-gray-100">{{ status_text }}</span>
+        </div>
+        <div class="text-2xl animate-heartbeat heartbeat-pulse" id="heartbeat-pulse">💚</div>
+    </div>
+    
+    <div class="bg-gray-900 bg-opacity-50 rounded-xl p-6 space-y-4 border border-gray-700">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                </svg>
+                <div>
+                    <span class="font-medium text-gray-300">Server:</span>
+                    <span class="text-gray-400 ml-1">{{ server_name }} v{{ server_version }}</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                </svg>
+                <div>
+                    <span class="font-medium text-gray-300">Capabilities:</span>
+                    <span class="text-gray-400 ml-1">{{ capabilities|join(", ") }}</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div>
+                    <span class="font-medium text-gray-300">Started:</span>
+                    <span class="text-gray-400 ml-1 font-mono text-xs">{{ started_at }}</span>
+                </div>
+            </div>
+            
             {% if has_heartbeat %}
-            <p>Last Heartbeat: {{ last_heartbeat }}</p>
+            <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+                <div>
+                    <span class="font-medium text-gray-300">Last Heartbeat:</span>
+                    <span class="text-gray-400 ml-1 font-mono text-xs">{{ last_heartbeat }}</span>
+                </div>
+            </div>
             {% endif %}
         </div>
     </div>
-    <div class="runtime-info">
-        <div class="metric-item">
-            <div class="metric-value">{{ active_sessions }}</div>
-            <div class="metric-label">Active Sessions</div>
+    
+    <div class="grid grid-cols-2 gap-6">
+        <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-6 border border-blue-700 hover:border-blue-600 transition-all duration-300 transform hover:-translate-y-1">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-3xl font-bold text-blue-300 mb-1">{{ active_sessions }}</div>
+                    <div class="text-sm text-blue-400 font-medium">Active Sessions</div>
+                </div>
+                <svg class="w-8 h-8 text-blue-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+            </div>
         </div>
-        <div class="metric-item">
-            <div class="metric-value">{{ total_tool_calls }}</div>
-            <div class="metric-label">Total Tool Calls</div>
+        
+        <div class="bg-gradient-to-br from-purple-900 to-purple-800 rounded-xl p-6 border border-purple-700 hover:border-purple-600 transition-all duration-300 transform hover:-translate-y-1">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-3xl font-bold text-purple-300 mb-1">{{ total_tool_calls }}</div>
+                    <div class="text-sm text-purple-400 font-medium">Total Calls</div>
+                </div>
+                <svg class="w-8 h-8 text-purple-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
         </div>
     </div>
 </div>

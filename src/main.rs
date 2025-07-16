@@ -2,12 +2,13 @@ mod dashboard;
 mod server;
 mod shared;
 
+use std::sync::Arc;
+
 use clap::{Parser, Subcommand};
 use shared::{
     config::Config,
     state::{AppState, McpStatus, ServerInfo},
 };
-use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(name = "rust-mcp-server")]

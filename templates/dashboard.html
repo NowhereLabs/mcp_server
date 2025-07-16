@@ -3,69 +3,187 @@
 {% block title %}{{ title }} - MCP Dashboard{% endblock %}
 
 {% block content %}
-<div class="dashboard-grid">
-    <!-- Server Status Card -->
-    <div class="card status-card">
-        <h2>Server Status</h2>
-        <div id="status-content"
-             hx-get="/api/status"
-             hx-trigger="load, every 1s, refresh from:body"
-             hx-swap="innerHTML">
-             <div class="loading">Loading status...</div>
-        </div>
-        <!-- Real-time heartbeat indicator -->
-        <div id="heartbeat-indicator"
-             hx-get="/api/heartbeat"
-             hx-trigger="load, every 500ms"
-             hx-swap="none"
-             hx-on="htmx:afterRequest: updateHeartbeat(event)">
-        </div>
+<div class="space-y-8">
+    <!-- Hero Section -->
+    <div class="text-center py-8">
+        <h2 class="text-4xl font-bold text-gradient mb-4">
+            Echo Tool Server
+        </h2>
+        <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+            A simplified MCP server demonstrating real-time tool execution with a modern, professional interface.
+        </p>
     </div>
-    
-    <!-- Metrics Card -->
-    <div class="card metrics-card">
-        <h2>Performance Metrics</h2>
-        <div id="metrics-content"
-             hx-get="/api/metrics"
-             hx-trigger="load, every 2s, refresh from:body"
-             hx-swap="innerHTML">
-            <div class="loading">Loading metrics...</div>
-        </div>
-    </div>
-    
-    <!-- Available Tools -->
-    <div class="card tools-card">
-        <h2>Available Tools</h2>
-        <div id="tools-content"
-             hx-get="/api/tools"
-             hx-trigger="load, every 10s"
-             hx-swap="innerHTML">
-            <div class="loading">Loading tools...</div>
-        </div>
-    </div>
-    
-    <!-- Recent Tool Calls -->
-    <div class="card tool-calls-card">
-        <h2>Recent Tool Calls</h2>
-        <div id="tool-calls-content"
-             hx-get="/api/tool-calls"
-             hx-trigger="load, every 1s, refresh from:body"
-             hx-swap="innerHTML">
-            <div class="loading">Loading recent calls...</div>
-        </div>
-    </div>
-    
-    <!-- Live Events Stream -->
-    <div class="card events-card">
-        <h2>Live Events</h2>
-        <div id="events-content"
-             hx-ext="sse"
-             sse-connect="/sse">
-            <div id="events-container" class="events-container">
-                <div class="event-placeholder">Waiting for events...</div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <!-- Left Column - Status & Metrics -->
+        <div class="lg:col-span-4 space-y-4 lg:space-y-6">
+            <!-- Server Status Card -->
+            <div class="card-gradient animate-float">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-100 flex items-center">
+                        <svg class="w-6 h-6 mr-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Server Status
+                    </h3>
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-heartbeat neon-glow"></div>
+                </div>
+                <div id="status-content"
+                     hx-get="/api/status"
+                     hx-trigger="load, every 1s, refresh from:body"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        <span class="ml-3 text-gray-400">Loading status...</span>
+                    </div>
+                </div>
+                <!-- Real-time heartbeat indicator -->
+                <div id="heartbeat-indicator"
+                     hx-get="/api/heartbeat"
+                     hx-trigger="load, every 500ms"
+                     hx-swap="none"
+                     hx-on="htmx:afterRequest: updateHeartbeat(event)">
+                </div>
             </div>
-            <div id="tool-calls-live" class="tool-calls-live"></div>
-            <div id="resources-live" class="resources-live"></div>
+            
+            <!-- Metrics Card -->
+            <div class="metric-card animate-float" style="animation-delay: 0.5s;">
+                <div class="flex items-center mb-6">
+                    <svg class="w-6 h-6 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <h3 class="text-xl font-bold text-gray-100">Performance Metrics</h3>
+                </div>
+                <div id="metrics-content"
+                     hx-get="/api/metrics"
+                     hx-trigger="load, every 2s, refresh from:body"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                        <span class="ml-3 text-gray-400">Loading metrics...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center Column - Tool Interface -->
+        <div class="lg:col-span-5 space-y-4 lg:space-y-6">
+            <!-- Echo Tool Interactive Panel -->
+            <div class="glass-card p-8 neon-glow animate-float" style="animation-delay: 1s;">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center neon-glow">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">Echo Tool</h3>
+                    <p class="text-gray-300">Test the echo functionality with real-time execution</p>
+                </div>
+                
+                <form id="echo-form" class="space-y-6">
+                    <div>
+                        <label for="message" class="block text-sm font-semibold text-gray-300 mb-2">
+                            Message to Echo
+                        </label>
+                        <input 
+                            type="text" 
+                            id="message" 
+                            name="message" 
+                            placeholder="Enter your message here..."
+                            class="input-dark w-full text-lg py-3"
+                            value="Hello from the MCP Dashboard!"
+                        >
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="btn-accent w-full py-4 text-lg font-semibold"
+                        onclick="executeEchoTool(event)"
+                    >
+                        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        Execute Echo Tool
+                    </button>
+                </form>
+                
+                <!-- Result Display -->
+                <div id="echo-result" class="mt-6 hidden">
+                    <div class="code-block">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-green-400 font-semibold">Tool Result:</span>
+                            <span id="execution-time" class="text-gray-400 text-sm"></span>
+                        </div>
+                        <pre id="result-content" class="text-green-300"></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Available Tools -->
+            <div class="card animate-float" style="animation-delay: 1.5s;">
+                <div class="flex items-center mb-6">
+                    <svg class="w-6 h-6 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                    </svg>
+                    <h3 class="text-xl font-bold text-gray-100">Available Tools</h3>
+                </div>
+                <div id="tools-content"
+                     hx-get="/api/tools"
+                     hx-trigger="load, every 10s"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        <span class="ml-3 text-gray-400">Loading tools...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column - Activity & Events -->
+        <div class="lg:col-span-3 space-y-4 lg:space-y-6">
+            <!-- Recent Tool Calls -->
+            <div class="card animate-float" style="animation-delay: 2s;">
+                <div class="flex items-center mb-6">
+                    <svg class="w-6 h-6 mr-3 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3 class="text-lg font-bold text-gray-100">Recent Calls</h3>
+                </div>
+                <div id="tool-calls-content"
+                     hx-get="/api/tool-calls"
+                     hx-trigger="load, every 1s, refresh from:body"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center py-8">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500"></div>
+                        <span class="ml-2 text-gray-400 text-sm">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Live Events Stream -->
+            <div class="card animate-float" style="animation-delay: 2.5s;">
+                <div class="flex items-center mb-6">
+                    <svg class="w-6 h-6 mr-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3 class="text-lg font-bold text-gray-100">Live Events</h3>
+                </div>
+                <div id="events-content"
+                     hx-ext="sse"
+                     sse-connect="/sse">
+                    <div id="events-container" class="h-56 lg:h-64 overflow-y-auto scrollbar-dark bg-gray-900 bg-opacity-50 rounded-lg p-3 lg:p-4 border border-gray-700">
+                        <div class="text-gray-500 text-sm text-center py-8">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                            Waiting for events...
+                        </div>
+                    </div>
+                    <div id="tool-calls-live" class="mt-4 space-y-2"></div>
+                    <div id="resources-live" class="mt-4 space-y-2"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -76,6 +194,120 @@
     // Global heartbeat state
     let lastHeartbeatTime = null;
     let heartbeatStatus = 'unknown';
+
+    // Execute Echo Tool Function
+    function executeEchoTool(event) {
+        event.preventDefault();
+        
+        const form = document.getElementById('echo-form');
+        const messageInput = document.getElementById('message');
+        const button = form.querySelector('button[type="submit"]');
+        const resultDiv = document.getElementById('echo-result');
+        
+        const message = messageInput.value.trim();
+        if (!message) {
+            showNotification('Please enter a message to echo', 'error');
+            return;
+        }
+        
+        // Disable button and show loading
+        button.disabled = true;
+        button.innerHTML = `
+            <svg class="w-5 h-5 mr-2 inline animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Executing...
+        `;
+        
+        const startTime = Date.now();
+        
+        const requestData = {
+            name: 'echo',
+            arguments: { message: message }
+        };
+        
+        fetch('/api/tools/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+            
+            // Show result
+            document.getElementById('execution-time').textContent = `Executed in ${duration}ms`;
+            document.getElementById('result-content').textContent = JSON.stringify(data.result, null, 2);
+            resultDiv.classList.remove('hidden');
+            
+            if (data.success) {
+                showNotification('Echo tool executed successfully!', 'success');
+                resultDiv.classList.add('animate-glow');
+                setTimeout(() => resultDiv.classList.remove('animate-glow'), 2000);
+            } else {
+                showNotification(`Execution failed: ${data.error}`, 'error');
+            }
+            
+            // Trigger updates
+            htmx.trigger('#tool-calls-content', 'htmx:trigger');
+            htmx.trigger('#metrics-content', 'htmx:trigger');
+            htmx.trigger('#status-content', 'htmx:trigger');
+        })
+        .catch(error => {
+            showNotification(`Error: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            // Re-enable button
+            button.disabled = false;
+            button.innerHTML = `
+                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+                Execute Echo Tool
+            `;
+        });
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg border transform transition-all duration-300 translate-x-full`;
+        
+        if (type === 'success') {
+            notification.classList.add('bg-green-900', 'text-green-300', 'border-green-700');
+        } else if (type === 'error') {
+            notification.classList.add('bg-red-900', 'text-red-300', 'border-red-700');
+        } else {
+            notification.classList.add('bg-blue-900', 'text-blue-300', 'border-blue-700');
+        }
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-current opacity-70 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
 
     // Update heartbeat indicator
     function updateHeartbeat(event) {
@@ -94,7 +326,7 @@
             const pulseElement = document.querySelector('.heartbeat-pulse');
             if (pulseElement) {
                 pulseElement.style.animation = heartbeatStatus === 'connected' 
-                    ? 'heartbeat 1s infinite' 
+                    ? 'heartbeat 2s infinite' 
                     : 'none';
                 pulseElement.style.opacity = heartbeatStatus === 'connected' ? '1' : '0.5';
             }
@@ -121,46 +353,81 @@
     // Handle SSE events
     document.body.addEventListener('htmx:sseMessage', function(evt) {
         try {
+            console.log('SSE message received:', evt.detail);
             const data = JSON.parse(evt.detail.data);
-            const eventsStream = document.getElementById('events-stream');
+            const eventsContainer = document.getElementById('events-container');
+            
+            // Clear the "Waiting for events..." message if this is the first event
+            const waitingMessage = eventsContainer.querySelector('.text-gray-500');
+            if (waitingMessage) {
+                waitingMessage.remove();
+            }
             
             const eventItem = document.createElement('div');
-            eventItem.className = 'event-item';
+            eventItem.className = 'text-sm p-3 rounded-lg mb-2 font-mono border-l-4 transition-all duration-300 transform translate-x-full';
             
             if (data.type === 'error') {
-                eventItem.classList.add('error');
+                eventItem.classList.add('bg-red-900', 'bg-opacity-30', 'text-red-300', 'border-red-500');
             } else if (data.type === 'tool_called') {
-                eventItem.classList.add('success');
+                eventItem.classList.add('bg-green-900', 'bg-opacity-30', 'text-green-300', 'border-green-500');
+            } else {
+                eventItem.classList.add('bg-blue-900', 'bg-opacity-30', 'text-blue-300', 'border-blue-500');
             }
             
             const timestamp = new Date(data.timestamp).toLocaleTimeString();
             let message = `[${timestamp}] ${data.type}`;
             
-            if (data.name) {
-                message += `: ${data.name}`;
-            }
-            if (data.message) {
-                message += `: ${data.message}`;
-            }
-            if (data.uri) {
-                message += `: ${data.uri}`;
-            }
+            if (data.name) message += `: ${data.name}`;
+            if (data.message) message += `: ${data.message}`;
+            if (data.uri) message += `: ${data.uri}`;
+            if (data.id) message += ` (${data.id})`;
             
             eventItem.textContent = message;
-            eventsStream.insertBefore(eventItem, eventsStream.firstChild);
+            eventsContainer.insertBefore(eventItem, eventsContainer.firstChild);
             
-            // Keep only last 50 events
-            while (eventsStream.children.length > 50) {
-                eventsStream.removeChild(eventsStream.lastChild);
+            // Animate in
+            setTimeout(() => {
+                eventItem.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Keep only last 20 events
+            while (eventsContainer.children.length > 20) {
+                eventsContainer.removeChild(eventsContainer.lastChild);
             }
+            
+            // Auto scroll to top
+            eventsContainer.scrollTop = 0;
         } catch (error) {
-            console.error('Error parsing SSE message:', error);
+            console.error('Error parsing SSE message:', error, evt.detail);
         }
     });
-    
-    // Tool execution function
-    function executeTool(toolName) {
-        // Get default arguments for each tool
+
+    // Add SSE connection monitoring
+    document.body.addEventListener('htmx:sseOpen', function(evt) {
+        console.log('SSE connection opened:', evt);
+        showNotification('Live events connected', 'success');
+    });
+
+    document.body.addEventListener('htmx:sseError', function(evt) {
+        console.log('SSE connection error:', evt);
+        showNotification('Live events connection error', 'error');
+    });
+
+    document.body.addEventListener('htmx:sseClose', function(evt) {
+        console.log('SSE connection closed:', evt);
+        showNotification('Live events disconnected', 'warning');
+    });
+
+    // Enhanced form handling
+    document.getElementById('message').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            executeEchoTool(e);
+        }
+    });
+
+    // Global tool execution function - used by available tools section
+    window.executeTool = function(toolName) {
+        // Execute tools with default arguments, including echo
         const defaultArgs = getDefaultArguments(toolName);
         
         const requestData = {
@@ -172,7 +439,12 @@
         const button = document.querySelector(`button[data-tool="${toolName}"]`);
         if (button) {
             button.disabled = true;
-            button.textContent = 'Executing...';
+            button.innerHTML = `
+                <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Executing...
+            `;
         }
         
         fetch('/api/tools/execute', {
@@ -185,66 +457,62 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(`Tool executed successfully!\\nResult: ${JSON.stringify(data.result, null, 2)}`);
+                if (toolName === 'echo') {
+                    const message = data.result?.message || data.result?.echoed || 'Hello from tool execution!';
+                    showNotification(`Echo tool executed: "${message}"`, 'success');
+                } else {
+                    showNotification(`Tool "${toolName}" executed successfully!`, 'success');
+                }
             } else {
-                alert(`Tool execution failed:\\n${data.error}`);
+                showNotification(`Tool execution failed: ${data.error}`, 'error');
             }
             
-            // Re-enable the button
-            if (button) {
-                button.disabled = false;
-                button.textContent = 'Execute';
-            }
-            
-            // Trigger real-time updates for all relevant sections
+            // Trigger real-time updates
             htmx.trigger('#tool-calls-content', 'htmx:trigger');
             htmx.trigger('#metrics-content', 'htmx:trigger');
             htmx.trigger('#status-content', 'htmx:trigger');
-            
-            // Flash success indicator
-            document.body.style.background = '#d4edda';
-            setTimeout(() => {
-                document.body.style.background = '#f5f7fa';
-            }, 200);
         })
         .catch(error => {
-            alert(`Error executing tool: ${error.message}`);
-            
+            showNotification(`Error executing tool: ${error.message}`, 'error');
+        })
+        .finally(() => {
             // Re-enable the button
             if (button) {
                 button.disabled = false;
-                button.textContent = 'Execute';
+                button.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                    Execute Tool
+                `;
             }
-            
-            // Flash error indicator
-            document.body.style.background = '#f8d7da';
-            setTimeout(() => {
-                document.body.style.background = '#f5f7fa';
-            }, 200);
         });
-    }
+    };
+
+    // Global helper functions
+    window.showToolSchema = function(toolName) {
+        const schemas = {
+            'echo': {
+                type: 'object',
+                properties: {
+                    message: {
+                        type: 'string',
+                        description: 'The message to echo back'
+                    }
+                },
+                required: ['message']
+            }
+        };
+        
+        const schema = schemas[toolName] || { error: 'Schema not available' };
+        showNotification(`Schema for ${toolName}:\n${JSON.stringify(schema, null, 2)}`, 'info');
+    };
     
-    // Show tool schema
-    function showToolSchema(toolName) {
-        fetch(`/api/tools/${toolName}/schema`)
-        .then(response => response.json())
-        .then(schema => {
-            alert(`Schema for ${toolName}:\\n${JSON.stringify(schema, null, 2)}`);
-        })
-        .catch(error => {
-            alert(`Error fetching schema: ${error.message}`);
-        });
-    }
-    
-    // Get default arguments for each tool (for demo purposes)
+    // Get default arguments for tools
     function getDefaultArguments(toolName) {
         switch (toolName) {
-            case 'filesystem':
-                return { operation: 'read', path: '/etc/hostname' };
-            case 'http':
-                return { method: 'GET', url: 'https://httpbin.org/get' };
-            case 'system':
-                return { info_type: 'cpu' };
+            case 'echo':
+                return { message: 'Hello from tool execution!' };
             default:
                 return {};
         }
