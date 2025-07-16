@@ -2,6 +2,13 @@
 name = "rust-mcp-server"
 version = "0.1.1"
 edition = "2021"
+authors = ["NowhereLabs"]
+description = "High-performance Rust MCP server with real-time web dashboard"
+repository = "https://github.com/NowhereLabs/mcp_server"
+license = "MIT"
+readme = "README.md"
+keywords = ["mcp", "server", "dashboard", "realtime", "monitoring"]
+categories = ["web-programming", "network-programming"]
 
 [dependencies]
 # Core state management dependencies
