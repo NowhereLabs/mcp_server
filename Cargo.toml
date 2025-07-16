@@ -1,0 +1,57 @@
+[package]
+name = "rust-mcp-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core state management dependencies
+arc-swap = "1.7"
+dashmap = "6.1"
+tokio = { version = "1.40", features = ["full"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Official MCP SDK
+mcp-server = "0.1"
+mcp-spec = "0.1"
+
+# Environment variables
+dotenvy = "0.15"
+
+# Async trait support
+async-trait = "0.1"
+
+# Additional dependencies for Phase 2
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+sysinfo = "0.32"
+toml = "0.8"
+
+# Web framework for dashboard
+actix-web = "4.9"
+actix-files = "0.6"
+actix-ws = "0.3"
+actix-web-lab = "0.22"
+
+# Template engine
+askama = "0.12"
+askama_actix = "0.14"
+
+# Additional utilities
+async-stream = "0.3"
+futures-util = "0.3"
+num_cpus = "1.16"
+clap = { version = "4.5", features = ["derive"] }
+
+# Testing dependencies
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.10"
+mockito = "1.4"
+wiremock = "0.6"
+assert_matches = "1.5"

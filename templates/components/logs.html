@@ -1,0 +1,20 @@
+<div class="logs-component">
+    {% if logs.is_empty() %}
+        <p class="no-logs">No recent logs available</p>
+    {% else %}
+        <div class="logs-list">
+            {% for log in logs %}
+            <div class="log-entry {{ log.level }}">
+                <span class="timestamp">{{ log.timestamp }}</span>
+                <span class="level">{{ log.level|upper }}</span>
+                <span class="message">{{ log.message }}</span>
+                {% if log.metadata %}
+                <div class="log-metadata">
+                    {{ log.metadata }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

@@ -1,0 +1,27 @@
+<div class="status-component">
+    <div class="status-info">
+        <p>
+            <span class="status-indicator {{ status_class }}" id="status-indicator"></span>
+            {{ status_text }}
+            <span class="heartbeat-pulse" id="heartbeat-pulse">💓</span>
+        </p>
+        <div class="server-info">
+            <p>Server: {{ server_name }} v{{ server_version }}</p>
+            <p>Capabilities: {{ capabilities.join(", ") }}</p>
+            <p>Started: {{ started_at }}</p>
+            {% if has_heartbeat %}
+            <p>Last Heartbeat: {{ last_heartbeat }}</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="runtime-info">
+        <div class="metric-item">
+            <div class="metric-value">{{ active_sessions }}</div>
+            <div class="metric-label">Active Sessions</div>
+        </div>
+        <div class="metric-item">
+            <div class="metric-value">{{ total_tool_calls }}</div>
+            <div class="metric-label">Total Tool Calls</div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/sse.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/ws.js"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>MCP Server Dashboard</h1>
+            <div class="version">v{{ version }}</div>
+        </div>
+    </header>
+    
+    <main class="main">
+        <div class="container">
+            <div class="dashboard-grid">
+                <!-- Server Status Card -->
+                <div class="card status-card">
+                    <h2>Server Status</h2>
+                    <div id="status-content"
+                         hx-get="/api/status"
+                         hx-trigger="load, every 2s"
+                         hx-swap="innerHTML">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+                
+                <!-- Metrics Grid -->
+                <div class="card metrics-card">
+                    <h2>Performance Metrics</h2>
+                    <div id="metrics-content"
+                         hx-get="/api/metrics"
+                         hx-trigger="load, every 5s"
+                         hx-swap="innerHTML">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+                
+                <!-- Available Tools -->
+                <div class="card tools-card">
+                    <h2>Available Tools</h2>
+                    <div id="tools-content"
+                         hx-get="/api/tools"
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+                
+                <!-- Recent Tool Calls -->
+                <div class="card tool-calls-card">
+                    <h2>Recent Tool Calls</h2>
+                    <div id="tool-calls-content"
+                         hx-get="/api/tool-calls"
+                         hx-trigger="load, every 3s"
+                         hx-swap="innerHTML">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+                
+                <!-- Live Events Stream -->
+                <div class="card events-card">
+                    <h2>Live Events</h2>
+                    <div id="events-content"
+                         hx-ext="sse"
+                         sse-connect="/sse"
+                         sse-swap="message">
+                        <div id="events-stream" class="events-stream">
+                            <div class="event-item">Waiting for events...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Handle SSE events
+        document.body.addEventListener('htmx:sseMessage', function(evt) {
+            try {
+                const data = JSON.parse(evt.detail.data);
+                const eventsStream = document.getElementById('events-stream');
+                
+                const eventItem = document.createElement('div');
+                eventItem.className = 'event-item';
+                
+                if (data.type === 'error') {
+                    eventItem.classList.add('error');
+                } else if (data.type === 'tool_called') {
+                    eventItem.classList.add('success');
+                }
+                
+                const timestamp = new Date(data.timestamp).toLocaleTimeString();
+                let message = `[${timestamp}] ${data.type}`;
+                
+                if (data.name) {
+                    message += `: ${data.name}`;
+                }
+                if (data.message) {
+                    message += `: ${data.message}`;
+                }
+                if (data.uri) {
+                    message += `: ${data.uri}`;
+                }
+                
+                eventItem.textContent = message;
+                eventsStream.insertBefore(eventItem, eventsStream.firstChild);
+                
+                // Keep only last 50 events
+                while (eventsStream.children.length > 50) {
+                    eventsStream.removeChild(eventsStream.lastChild);
+                }
+            } catch (error) {
+                console.error('Error parsing SSE message:', error);
+            }
+        });
+        
+        // Tool execution function
+        function executeTool(toolName) {
+            // Get default arguments for each tool
+            const defaultArgs = getDefaultArguments(toolName);
+            
+            // For demo purposes, use default arguments
+            // In a real application, you'd want to show a form to input arguments
+            const requestData = {
+                name: toolName,
+                arguments: defaultArgs
+            };
+            
+            // Disable the button during execution
+            const button = document.querySelector(`button[data-tool="${toolName}"]`);
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Executing...';
+            }
+            
+            fetch('/api/tools/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Tool executed successfully!\\nResult: ${JSON.stringify(data.result, null, 2)}`);
+                } else {
+                    alert(`Tool execution failed:\\n${data.error}`);
+                }
+                
+                // Re-enable the button
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = 'Execute';
+                }
+                
+                // Refresh tool calls to show the new execution
+                document.getElementById('tool-calls-content').dispatchEvent(new Event('htmx:trigger'));
+            })
+            .catch(error => {
+                alert(`Error executing tool: ${error.message}`);
+                
+                // Re-enable the button
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = 'Execute';
+                }
+            });
+        }
+        
+        // Get default arguments for each tool (for demo purposes)
+        function getDefaultArguments(toolName) {
+            switch (toolName) {
+                case 'read_file':
+                    return { path: '/etc/hostname' };
+                case 'write_file':
+                    return { path: '/tmp/test.txt', content: 'Hello from dashboard!' };
+                case 'list_directory':
+                    return { path: '/tmp' };
+                case 'http_get':
+                    return { url: 'https://httpbin.org/get' };
+                case 'http_post':
+                    return { url: 'https://httpbin.org/post', data: { test: 'data' } };
+                case 'system_info':
+                    return {};
+                default:
+                    return {};
+            }
+        }
+        
+        // Custom response handlers
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+            if (evt.detail.target.id === 'status-content') {
+                const response = JSON.parse(evt.detail.xhr.response);
+                const statusClass = response.server.connected ? 'connected' : 'disconnected';
+                const statusText = response.server.connected ? 'Connected' : 'Disconnected';
+                
+                evt.detail.target.innerHTML = `
+                    <div class="status-info">
+                        <p><span class="status-indicator ${statusClass}"></span> ${statusText}</p>
+                        <p>Server: ${response.server.server_info.name} v${response.server.server_info.version}</p>
+                        <p>Capabilities: ${response.server.capabilities.join(', ')}</p>
+                        <p>Active Sessions: ${response.runtime.active_sessions}</p>
+                    </div>
+                `;
+                evt.detail.shouldSwap = false;
+            }
+            
+            if (evt.detail.target.id === 'metrics-content') {
+                const response = JSON.parse(evt.detail.xhr.response);
+                
+                evt.detail.target.innerHTML = `
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-value">${response.tool_calls.total}</div>
+                            <div class="metric-label">Total Tool Calls</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${response.tool_calls.success_rate.toFixed(1)}%</div>
+                            <div class="metric-label">Success Rate</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${response.sessions.active}</div>
+                            <div class="metric-label">Active Sessions</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${response.tool_calls.avg_duration_ms.toFixed(0)}ms</div>
+                            <div class="metric-label">Avg Duration</div>
+                        </div>
+                    </div>
+                `;
+                evt.detail.shouldSwap = false;
+            }
+            
+            if (evt.detail.target.id === 'tools-content') {
+                const tools = JSON.parse(evt.detail.xhr.response);
+                let html = '<div class="tool-grid">';
+                
+                tools.forEach(tool => {
+                    html += `
+                        <div class="tool-item">
+                            <h3>${tool.name}</h3>
+                            <div class="category">${tool.category}</div>
+                            <p>${tool.description}</p>
+                            <button class="execute-tool-btn" data-tool="${tool.name}">Execute</button>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                evt.detail.target.innerHTML = html;
+                evt.detail.shouldSwap = false;
+                
+                // Add click handlers to execute buttons
+                document.querySelectorAll('.execute-tool-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const toolName = this.dataset.tool;
+                        executeTool(toolName);
+                    });
+                });
+            }
+            
+            if (evt.detail.target.id === 'tool-calls-content') {
+                const calls = JSON.parse(evt.detail.xhr.response);
+                
+                if (calls.length === 0) {
+                    evt.detail.target.innerHTML = '<p>No tool calls yet...</p>';
+                } else {
+                    let html = '<div class="tool-calls-list">';
+                    calls.forEach(call => {
+                        const timestamp = new Date(call.timestamp).toLocaleString();
+                        const statusClass = call.result && call.result.Success ? 'success' : 
+                                          call.result && call.result.Error ? 'error' : 'pending';
+                        const duration = call.duration_ms ? `${call.duration_ms}ms` : 'pending';
+                        
+                        html += `
+                            <div class="tool-call-item ${statusClass}">
+                                <div class="tool-call-header">
+                                    <span class="tool-call-name">${call.name}</span>
+                                    <span class="tool-call-duration">${duration}</span>
+                                </div>
+                                <div class="tool-call-timestamp">${timestamp}</div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    evt.detail.target.innerHTML = html;
+                }
+                evt.detail.shouldSwap = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+# Build artifacts
+target/
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Test files
+tests/
+test_*.sh
+
+# Docker files (no need to copy these into the container)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment files (keep .env for default config, exclude local overrides)
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Claude specific
+.claude/
+claude_desktop_config.json
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Temporary files
+tmp/
+temp/

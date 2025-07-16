@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ title }} - MCP Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Server Status Card -->
+    <div class="card status-card">
+        <h2>Server Status</h2>
+        <div id="status-content"
+             hx-get="/api/status"
+             hx-trigger="load, every 1s, refresh from:body"
+             hx-swap="innerHTML">
+             <div class="loading">Loading status...</div>
+        </div>
+        <!-- Real-time heartbeat indicator -->
+        <div id="heartbeat-indicator"
+             hx-get="/api/heartbeat"
+             hx-trigger="load, every 500ms"
+             hx-swap="none"
+             hx-on="htmx:afterRequest: updateHeartbeat(event)">
+        </div>
+    </div>
+    
+    <!-- Metrics Card -->
+    <div class="card metrics-card">
+        <h2>Performance Metrics</h2>
+        <div id="metrics-content"
+             hx-get="/api/metrics"
+             hx-trigger="load, every 2s, refresh from:body"
+             hx-swap="innerHTML">
+            <div class="loading">Loading metrics...</div>
+        </div>
+    </div>
+    
+    <!-- Available Tools -->
+    <div class="card tools-card">
+        <h2>Available Tools</h2>
+        <div id="tools-content"
+             hx-get="/api/tools"
+             hx-trigger="load, every 10s"
+             hx-swap="innerHTML">
+            <div class="loading">Loading tools...</div>
+        </div>
+    </div>
+    
+    <!-- Recent Tool Calls -->
+    <div class="card tool-calls-card">
+        <h2>Recent Tool Calls</h2>
+        <div id="tool-calls-content"
+             hx-get="/api/tool-calls"
+             hx-trigger="load, every 1s, refresh from:body"
+             hx-swap="innerHTML">
+            <div class="loading">Loading recent calls...</div>
+        </div>
+    </div>
+    
+    <!-- Live Events Stream -->
+    <div class="card events-card">
+        <h2>Live Events</h2>
+        <div id="events-content"
+             hx-ext="sse"
+             sse-connect="/sse">
+            <div id="events-container" class="events-container">
+                <div class="event-placeholder">Waiting for events...</div>
+            </div>
+            <div id="tool-calls-live" class="tool-calls-live"></div>
+            <div id="resources-live" class="resources-live"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Global heartbeat state
+    let lastHeartbeatTime = null;
+    let heartbeatStatus = 'unknown';
+
+    // Update heartbeat indicator
+    function updateHeartbeat(event) {
+        if (event.detail.xhr.status === 200) {
+            const data = JSON.parse(event.detail.xhr.response);
+            lastHeartbeatTime = new Date(data.timestamp);
+            heartbeatStatus = data.connected ? 'connected' : 'disconnected';
+            
+            // Update visual indicator in status card
+            const statusElement = document.querySelector('.status-indicator');
+            if (statusElement) {
+                statusElement.className = `status-indicator ${heartbeatStatus}`;
+            }
+            
+            // Update heartbeat pulse animation
+            const pulseElement = document.querySelector('.heartbeat-pulse');
+            if (pulseElement) {
+                pulseElement.style.animation = heartbeatStatus === 'connected' 
+                    ? 'heartbeat 1s infinite' 
+                    : 'none';
+                pulseElement.style.opacity = heartbeatStatus === 'connected' ? '1' : '0.5';
+            }
+            
+            // Update page title with status
+            document.title = `${heartbeatStatus === 'connected' ? '🟢' : '🔴'} MCP Dashboard`;
+            
+            // Trigger status update if heartbeat shows changes
+            if (data.active_sessions !== undefined || data.total_tool_calls !== undefined) {
+                htmx.trigger('#status-content', 'refresh');
+            }
+        } else {
+            heartbeatStatus = 'error';
+            document.title = '🔴 MCP Dashboard - Error';
+            
+            const pulseElement = document.querySelector('.heartbeat-pulse');
+            if (pulseElement) {
+                pulseElement.style.animation = 'none';
+                pulseElement.style.opacity = '0.3';
+            }
+        }
+    }
+
+    // Handle SSE events
+    document.body.addEventListener('htmx:sseMessage', function(evt) {
+        try {
+            const data = JSON.parse(evt.detail.data);
+            const eventsStream = document.getElementById('events-stream');
+            
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+            
+            if (data.type === 'error') {
+                eventItem.classList.add('error');
+            } else if (data.type === 'tool_called') {
+                eventItem.classList.add('success');
+            }
+            
+            const timestamp = new Date(data.timestamp).toLocaleTimeString();
+            let message = `[${timestamp}] ${data.type}`;
+            
+            if (data.name) {
+                message += `: ${data.name}`;
+            }
+            if (data.message) {
+                message += `: ${data.message}`;
+            }
+            if (data.uri) {
+                message += `: ${data.uri}`;
+            }
+            
+            eventItem.textContent = message;
+            eventsStream.insertBefore(eventItem, eventsStream.firstChild);
+            
+            // Keep only last 50 events
+            while (eventsStream.children.length > 50) {
+                eventsStream.removeChild(eventsStream.lastChild);
+            }
+        } catch (error) {
+            console.error('Error parsing SSE message:', error);
+        }
+    });
+    
+    // Tool execution function
+    function executeTool(toolName) {
+        // Get default arguments for each tool
+        const defaultArgs = getDefaultArguments(toolName);
+        
+        const requestData = {
+            name: toolName,
+            arguments: defaultArgs
+        };
+        
+        // Disable the button during execution
+        const button = document.querySelector(`button[data-tool="${toolName}"]`);
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Executing...';
+        }
+        
+        fetch('/api/tools/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Tool executed successfully!\\nResult: ${JSON.stringify(data.result, null, 2)}`);
+            } else {
+                alert(`Tool execution failed:\\n${data.error}`);
+            }
+            
+            // Re-enable the button
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Execute';
+            }
+            
+            // Trigger real-time updates for all relevant sections
+            htmx.trigger('#tool-calls-content', 'htmx:trigger');
+            htmx.trigger('#metrics-content', 'htmx:trigger');
+            htmx.trigger('#status-content', 'htmx:trigger');
+            
+            // Flash success indicator
+            document.body.style.background = '#d4edda';
+            setTimeout(() => {
+                document.body.style.background = '#f5f7fa';
+            }, 200);
+        })
+        .catch(error => {
+            alert(`Error executing tool: ${error.message}`);
+            
+            // Re-enable the button
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Execute';
+            }
+            
+            // Flash error indicator
+            document.body.style.background = '#f8d7da';
+            setTimeout(() => {
+                document.body.style.background = '#f5f7fa';
+            }, 200);
+        });
+    }
+    
+    // Show tool schema
+    function showToolSchema(toolName) {
+        fetch(`/api/tools/${toolName}/schema`)
+        .then(response => response.json())
+        .then(schema => {
+            alert(`Schema for ${toolName}:\\n${JSON.stringify(schema, null, 2)}`);
+        })
+        .catch(error => {
+            alert(`Error fetching schema: ${error.message}`);
+        });
+    }
+    
+    // Get default arguments for each tool (for demo purposes)
+    function getDefaultArguments(toolName) {
+        switch (toolName) {
+            case 'filesystem':
+                return { operation: 'read', path: '/etc/hostname' };
+            case 'http':
+                return { method: 'GET', url: 'https://httpbin.org/get' };
+            case 'system':
+                return { info_type: 'cpu' };
+            default:
+                return {};
+        }
+    }
+</script>
+{% endblock %}

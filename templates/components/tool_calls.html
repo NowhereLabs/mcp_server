@@ -1,0 +1,34 @@
+<div class="tool-calls-component">
+    {% if tool_calls.is_empty() %}
+        <p class="no-calls">No recent tool calls</p>
+    {% else %}
+        <div class="tool-calls-list">
+            {% for call in tool_calls %}
+            <div class="tool-call-item {{ call.status_class }}">
+                <div class="tool-call-header">
+                    <span class="tool-call-name">{{ call.name }}</span>
+                    <span class="tool-call-duration">{{ call.duration_ms }}</span>
+                </div>
+                <div class="tool-call-meta">
+                    <span class="tool-call-timestamp">{{ call.formatted_timestamp }}</span>
+                    <span class="tool-call-status">
+                        {% if call.success %}
+                            ✓ Success
+                        {% else %}
+                            ✗ {% if call.has_error %}{{ call.error }}{% else %}Failed{% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+                {% if call.has_result %}
+                <div class="tool-call-result">
+                    <details>
+                        <summary>View Result</summary>
+                        <pre>{{ call.result_string }}</pre>
+                    </details>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

@@ -1,0 +1,28 @@
+<div class="tools-component">
+    {% if tools.is_empty() %}
+        <p class="no-tools">No tools available</p>
+    {% else %}
+        <div class="tool-grid">
+            {% for tool in tools %}
+            <div class="tool-card">
+                <div class="tool-header">
+                    <h3>{{ tool.name }}</h3>
+                    <div class="tool-category">{{ tool.category }}</div>
+                </div>
+                <p class="tool-description">{{ tool.description }}</p>
+                <div class="tool-actions">
+                    <button class="execute-tool-btn" 
+                            data-tool="{{ tool.name }}"
+                            onclick="executeTool('{{ tool.name }}')">
+                        Execute
+                    </button>
+                    <button class="view-schema-btn" 
+                            onclick="showToolSchema('{{ tool.name }}')">
+                        Schema
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
