@@ -3,6 +3,29 @@
 {% block title %}{{ title }} - MCP Dashboard{% endblock %}
 
 {% block content %}
+<!-- Notification System -->
+<div x-data="notificationSystem()" class="fixed top-4 right-4 z-50 space-y-2">
+    <template x-for="notification in notifications" :key="notification.id">
+        <div class="px-6 py-4 rounded-lg shadow-lg border transform transition-all duration-300"
+             :class="getNotificationClass(notification.type)"
+             x-transition:enter="transform transition-all duration-300"
+             x-transition:enter-start="translate-x-full opacity-0"
+             x-transition:enter-end="translate-x-0 opacity-100"
+             x-transition:leave="transform transition-all duration-300"
+             x-transition:leave-start="translate-x-0 opacity-100"
+             x-transition:leave-end="translate-x-full opacity-0">
+            <div class="flex items-center">
+                <span x-text="notification.message"></span>
+                <button @click="remove(notification.id)" class="ml-4 text-current opacity-70 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </template>
+</div>
+
 <div class="space-y-8">
     <!-- Hero Section -->
     <div class="text-center py-8">
@@ -55,13 +78,42 @@
                     </svg>
                     <h3 class="text-xl font-bold text-gray-100">Performance Metrics</h3>
                 </div>
-                <div id="metrics-content"
-                     hx-get="/api/metrics"
-                     hx-trigger="load, every 2s, refresh from:body"
-                     hx-swap="innerHTML">
-                    <div class="flex items-center justify-center py-8">
+                <div x-data="metricsStore()" x-init="initializeUpdates()" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 bg-opacity-10 rounded-lg p-3" x-show="metrics.total_tool_calls !== undefined" x-transition>
+                            <div class="text-2xl font-bold" x-text="metrics.total_tool_calls || 0"></div>
+                            <div class="text-xs text-gray-400">Total Tool Calls</div>
+                        </div>
+                        <div class="bg-gray-50 bg-opacity-10 rounded-lg p-3" x-show="metrics.success_rate !== undefined" x-transition>
+                            <div class="text-2xl font-bold" 
+                                 x-text="(metrics.success_rate || 0) + '%'"
+                                 :class="{'text-green-400': metrics.success_rate > 90, 'text-red-400': metrics.success_rate < 70, 'text-yellow-400': metrics.success_rate >= 70 && metrics.success_rate <= 90}">
+                            </div>
+                            <div class="text-xs text-gray-400">Success Rate</div>
+                        </div>
+                        <div class="bg-gray-50 bg-opacity-10 rounded-lg p-3" x-show="metrics.avg_response_time !== undefined" x-transition>
+                            <div class="text-2xl font-bold text-blue-400" x-text="(metrics.avg_response_time || 0) + 'ms'"></div>
+                            <div class="text-xs text-gray-400">Avg Response Time</div>
+                        </div>
+                        <div class="bg-gray-50 bg-opacity-10 rounded-lg p-3" x-show="metrics.active_sessions !== undefined" x-transition>
+                            <div class="text-2xl font-bold text-purple-400" x-text="metrics.active_sessions || 0"></div>
+                            <div class="text-xs text-gray-400">Active Sessions</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Loading state -->
+                    <div x-show="loading" class="flex items-center justify-center py-8">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
                         <span class="ml-3 text-gray-400">Loading metrics...</span>
+                    </div>
+                    
+                    <!-- Hidden HTMX target -->
+                    <div id="metrics-data" 
+                         hx-get="/api/metrics" 
+                         hx-trigger="load, every 2s, refresh from:body" 
+                         hx-swap="none"
+                         @htmx:after-request="updateMetrics($event)"
+                         style="display: none;">
                     </div>
                 </div>
             </div>
@@ -81,41 +133,81 @@
                     <p class="text-gray-300">Test the echo functionality with real-time execution</p>
                 </div>
                 
-                <form id="echo-form" class="space-y-6">
-                    <div>
-                        <label for="message" class="block text-sm font-semibold text-gray-300 mb-2">
-                            Message to Echo
-                        </label>
-                        <input 
-                            type="text" 
-                            id="message" 
-                            name="message" 
-                            placeholder="Enter your message here..."
-                            class="input-dark w-full text-lg py-3"
-                            value="Hello from the MCP Dashboard!"
-                        >
+                <div x-data="echoTool()" x-init="init()" class="space-y-6">
+                    <form @submit.prevent="execute()" class="space-y-6">
+                        <div>
+                            <label for="message" class="block text-sm font-semibold text-gray-300 mb-2">
+                                Message to Echo
+                            </label>
+                            <input 
+                                x-model="message"
+                                type="text" 
+                                placeholder="Enter your message here..."
+                                class="input-dark w-full text-lg py-3"
+                                :class="{'border-red-500': errors.message}"
+                                :disabled="loading"
+                            >
+                            <div x-show="errors.message" x-transition class="text-red-400 text-sm mt-1">
+                                <span x-text="errors.message"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-4">
+                            <button 
+                                type="submit" 
+                                class="btn-accent flex-1 py-4 text-lg font-semibold"
+                                :disabled="loading || !message.trim()"
+                                :class="{'opacity-50': loading || !message.trim()}"
+                            >
+                                <svg x-show="!loading" class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                                <svg x-show="loading" class="w-5 h-5 mr-2 inline animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span x-text="loading ? 'Executing...' : 'Execute Echo Tool'"></span>
+                            </button>
+                            
+                            <button 
+                                type="button" 
+                                @click="clearHistory()"
+                                class="btn-secondary px-4 py-2 text-sm"
+                                :disabled="executionHistory.length === 0"
+                                :class="{'opacity-50': executionHistory.length === 0}"
+                            >
+                                Clear History
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Execution Stats -->
+                    <div x-show="executionHistory.length > 0" x-transition class="grid grid-cols-3 gap-4 p-4 bg-gray-800 bg-opacity-50 rounded-lg">
+                        <div class="text-center">
+                            <div class="text-lg font-bold text-blue-400" x-text="executionHistory.length"></div>
+                            <div class="text-xs text-gray-400">Executions</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-lg font-bold" 
+                                 x-text="getSuccessRate() + '%'"
+                                 :class="{'text-green-400': getSuccessRate() > 90, 'text-red-400': getSuccessRate() < 70, 'text-yellow-400': getSuccessRate() >= 70 && getSuccessRate() <= 90}">
+                            </div>
+                            <div class="text-xs text-gray-400">Success Rate</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-lg font-bold text-purple-400" x-text="getAverageExecutionTime() + 'ms'"></div>
+                            <div class="text-xs text-gray-400">Avg Time</div>
+                        </div>
                     </div>
                     
-                    <button 
-                        type="submit" 
-                        class="btn-accent w-full py-4 text-lg font-semibold"
-                        onclick="executeEchoTool(event)"
-                    >
-                        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                        </svg>
-                        Execute Echo Tool
-                    </button>
-                </form>
-                
-                <!-- Result Display -->
-                <div id="echo-result" class="mt-6 hidden">
-                    <div class="code-block">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-green-400 font-semibold">Tool Result:</span>
-                            <span id="execution-time" class="text-gray-400 text-sm"></span>
+                    <!-- Result Display -->
+                    <div x-show="result" x-transition class="mt-6">
+                        <div class="code-block">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-green-400 font-semibold">Tool Result:</span>
+                                <span x-text="executionTime" class="text-gray-400 text-sm"></span>
+                            </div>
+                            <pre x-text="result" class="text-green-300"></pre>
                         </div>
-                        <pre id="result-content" class="text-green-300"></pre>
                     </div>
                 </div>
             </div>
@@ -169,19 +261,52 @@
                     </svg>
                     <h3 class="text-lg font-bold text-gray-100">Live Events</h3>
                 </div>
-                <div id="events-content"
-                     hx-ext="sse"
-                     sse-connect="/sse">
-                    <div id="events-container" class="h-56 lg:h-64 overflow-y-auto scrollbar-dark bg-gray-900 bg-opacity-50 rounded-lg p-3 lg:p-4 border border-gray-700">
-                        <div class="text-gray-500 text-sm text-center py-8">
+                <div x-data="enhancedEventStream()" x-init="initializeSSE()" class="space-y-4">
+                    <!-- Event stream controls -->
+                    <div class="flex justify-between items-center text-sm">
+                        <div class="flex space-x-2">
+                            <button @click="togglePause()" 
+                                    :class="pauseStream ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'"
+                                    class="px-3 py-1 rounded text-white font-medium">
+                                <span x-text="pauseStream ? 'Resume' : 'Pause'"></span>
+                            </button>
+                            <button @click="clearEvents()" 
+                                    class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-white font-medium">
+                                Clear
+                            </button>
+                        </div>
+                        <div class="text-gray-400">
+                            <span x-text="events.length"></span> events
+                        </div>
+                    </div>
+                    <div class="h-56 lg:h-64 overflow-y-auto scrollbar-dark bg-gray-900 bg-opacity-50 rounded-lg p-3 lg:p-4 border border-gray-700">
+                        <!-- No events message -->
+                        <div x-show="events.length === 0" class="text-gray-500 text-sm text-center py-8">
                             <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                             </svg>
-                            Waiting for events...
+                            <span>Waiting for events...</span>
                         </div>
+                        
+                        <!-- Event list -->
+                        <template x-for="event in events" :key="event.id">
+                            <div class="text-sm p-3 rounded-lg mb-2 font-mono border-l-4 transition-all duration-300"
+                                 :class="getEventClass(event.type)"
+                                 x-transition:enter="transform transition-all duration-300"
+                                 x-transition:enter-start="translate-x-full opacity-0"
+                                 x-transition:enter-end="translate-x-0 opacity-100">
+                                <span x-text="formatEvent(event)"></span>
+                            </div>
+                        </template>
                     </div>
-                    <div id="tool-calls-live" class="mt-4 space-y-2"></div>
-                    <div id="resources-live" class="mt-4 space-y-2"></div>
+                    
+                    <!-- Hidden HTMX SSE connector -->
+                    <div id="sse-connector" 
+                         hx-ext="sse" 
+                         sse-connect="/sse"
+                         @htmx:sse-message="handleSSEMessage($event)"
+                         style="display: none;">
+                    </div>
                 </div>
             </div>
         </div>
@@ -194,120 +319,6 @@
     // Global heartbeat state
     let lastHeartbeatTime = null;
     let heartbeatStatus = 'unknown';
-
-    // Execute Echo Tool Function
-    function executeEchoTool(event) {
-        event.preventDefault();
-        
-        const form = document.getElementById('echo-form');
-        const messageInput = document.getElementById('message');
-        const button = form.querySelector('button[type="submit"]');
-        const resultDiv = document.getElementById('echo-result');
-        
-        const message = messageInput.value.trim();
-        if (!message) {
-            showNotification('Please enter a message to echo', 'error');
-            return;
-        }
-        
-        // Disable button and show loading
-        button.disabled = true;
-        button.innerHTML = `
-            <svg class="w-5 h-5 mr-2 inline animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-            Executing...
-        `;
-        
-        const startTime = Date.now();
-        
-        const requestData = {
-            name: 'echo',
-            arguments: { message: message }
-        };
-        
-        fetch('/api/tools/execute', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            const endTime = Date.now();
-            const duration = endTime - startTime;
-            
-            // Show result
-            document.getElementById('execution-time').textContent = `Executed in ${duration}ms`;
-            document.getElementById('result-content').textContent = JSON.stringify(data.result, null, 2);
-            resultDiv.classList.remove('hidden');
-            
-            if (data.success) {
-                showNotification('Echo tool executed successfully!', 'success');
-                resultDiv.classList.add('animate-glow');
-                setTimeout(() => resultDiv.classList.remove('animate-glow'), 2000);
-            } else {
-                showNotification(`Execution failed: ${data.error}`, 'error');
-            }
-            
-            // Trigger updates
-            htmx.trigger('#tool-calls-content', 'htmx:trigger');
-            htmx.trigger('#metrics-content', 'htmx:trigger');
-            htmx.trigger('#status-content', 'htmx:trigger');
-        })
-        .catch(error => {
-            showNotification(`Error: ${error.message}`, 'error');
-        })
-        .finally(() => {
-            // Re-enable button
-            button.disabled = false;
-            button.innerHTML = `
-                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                </svg>
-                Execute Echo Tool
-            `;
-        });
-    }
-
-    // Show notification
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg border transform transition-all duration-300 translate-x-full`;
-        
-        if (type === 'success') {
-            notification.classList.add('bg-green-900', 'text-green-300', 'border-green-700');
-        } else if (type === 'error') {
-            notification.classList.add('bg-red-900', 'text-red-300', 'border-red-700');
-        } else {
-            notification.classList.add('bg-blue-900', 'text-blue-300', 'border-blue-700');
-        }
-        
-        notification.innerHTML = `
-            <div class="flex items-center">
-                <span>${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-current opacity-70 hover:opacity-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Animate in
-        setTimeout(() => {
-            notification.classList.remove('translate-x-full');
-        }, 100);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            notification.classList.add('translate-x-full');
-            setTimeout(() => notification.remove(), 300);
-        }, 5000);
-    }
 
     // Update heartbeat indicator
     function updateHeartbeat(event) {
@@ -350,90 +361,26 @@
         }
     }
 
-    // Handle SSE events
-    document.body.addEventListener('htmx:sseMessage', function(evt) {
-        try {
-            console.log('SSE message received:', evt.detail);
-            const data = JSON.parse(evt.detail.data);
-            const eventsContainer = document.getElementById('events-container');
-            
-            // Clear the "Waiting for events..." message if this is the first event
-            const waitingMessage = eventsContainer.querySelector('.text-gray-500');
-            if (waitingMessage) {
-                waitingMessage.remove();
-            }
-            
-            const eventItem = document.createElement('div');
-            eventItem.className = 'text-sm p-3 rounded-lg mb-2 font-mono border-l-4 transition-all duration-300 transform translate-x-full';
-            
-            if (data.type === 'error') {
-                eventItem.classList.add('bg-red-900', 'bg-opacity-30', 'text-red-300', 'border-red-500');
-            } else if (data.type === 'tool_called') {
-                eventItem.classList.add('bg-green-900', 'bg-opacity-30', 'text-green-300', 'border-green-500');
-            } else {
-                eventItem.classList.add('bg-blue-900', 'bg-opacity-30', 'text-blue-300', 'border-blue-500');
-            }
-            
-            const timestamp = new Date(data.timestamp).toLocaleTimeString();
-            let message = `[${timestamp}] ${data.type}`;
-            
-            if (data.name) message += `: ${data.name}`;
-            if (data.message) message += `: ${data.message}`;
-            if (data.uri) message += `: ${data.uri}`;
-            if (data.id) message += ` (${data.id})`;
-            
-            eventItem.textContent = message;
-            eventsContainer.insertBefore(eventItem, eventsContainer.firstChild);
-            
-            // Animate in
-            setTimeout(() => {
-                eventItem.classList.remove('translate-x-full');
-            }, 100);
-            
-            // Keep only last 20 events
-            while (eventsContainer.children.length > 20) {
-                eventsContainer.removeChild(eventsContainer.lastChild);
-            }
-            
-            // Auto scroll to top
-            eventsContainer.scrollTop = 0;
-        } catch (error) {
-            console.error('Error parsing SSE message:', error, evt.detail);
-        }
-    });
-
     // Add SSE connection monitoring
     document.body.addEventListener('htmx:sseOpen', function(evt) {
         console.log('SSE connection opened:', evt);
-        showNotification('Live events connected', 'success');
+        Alpine.store('notifications').add('Live events connected', 'success');
     });
 
     document.body.addEventListener('htmx:sseError', function(evt) {
         console.log('SSE connection error:', evt);
-        showNotification('Live events connection error', 'error');
+        Alpine.store('notifications').add('Live events connection error', 'error');
     });
 
     document.body.addEventListener('htmx:sseClose', function(evt) {
         console.log('SSE connection closed:', evt);
-        showNotification('Live events disconnected', 'warning');
-    });
-
-    // Enhanced form handling
-    document.getElementById('message').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            executeEchoTool(e);
-        }
+        Alpine.store('notifications').add('Live events disconnected', 'warning');
     });
 
     // Global tool execution function - used by available tools section
-    window.executeTool = function(toolName) {
+    window.executeTool = async function(toolName) {
         // Execute tools with default arguments, including echo
         const defaultArgs = getDefaultArguments(toolName);
-        
-        const requestData = {
-            name: toolName,
-            arguments: defaultArgs
-        };
         
         // Disable the button during execution
         const button = document.querySelector(`button[data-tool="${toolName}"]`);
@@ -447,35 +394,24 @@
             `;
         }
         
-        fetch('/api/tools/execute', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+        try {
+            // Use the enhanced tool execution system
+            const result = await Alpine.store('toolExecution').executeGlobal(toolName, defaultArgs);
+            
+            if (result.success) {
                 if (toolName === 'echo') {
-                    const message = data.result?.message || data.result?.echoed || 'Hello from tool execution!';
-                    showNotification(`Echo tool executed: "${message}"`, 'success');
+                    const message = result.result?.message || result.result?.echoed || 'Hello from tool execution!';
+                    Alpine.store('notifications').add(`Echo tool executed: "${message}"`, 'success');
                 } else {
-                    showNotification(`Tool "${toolName}" executed successfully!`, 'success');
+                    Alpine.store('notifications').add(`Tool "${toolName}" executed successfully!`, 'success');
                 }
             } else {
-                showNotification(`Tool execution failed: ${data.error}`, 'error');
+                Alpine.store('notifications').add(`Tool execution failed: ${result.error}`, 'error');
             }
             
-            // Trigger real-time updates
-            htmx.trigger('#tool-calls-content', 'htmx:trigger');
-            htmx.trigger('#metrics-content', 'htmx:trigger');
-            htmx.trigger('#status-content', 'htmx:trigger');
-        })
-        .catch(error => {
-            showNotification(`Error executing tool: ${error.message}`, 'error');
-        })
-        .finally(() => {
+        } catch (error) {
+            Alpine.store('notifications').add(`Error executing tool: ${error.message}`, 'error');
+        } finally {
             // Re-enable the button
             if (button) {
                 button.disabled = false;
@@ -486,7 +422,7 @@
                     Execute Tool
                 `;
             }
-        });
+        }
     };
 
     // Global helper functions
@@ -505,7 +441,7 @@
         };
         
         const schema = schemas[toolName] || { error: 'Schema not available' };
-        showNotification(`Schema for ${toolName}:\n${JSON.stringify(schema, null, 2)}`, 'info');
+        Alpine.store('notifications').add(`Schema for ${toolName}:\n${JSON.stringify(schema, null, 2)}`, 'info');
     };
     
     // Get default arguments for tools
