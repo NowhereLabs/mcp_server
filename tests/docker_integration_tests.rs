@@ -150,15 +150,26 @@ async fn test_docker_container_runs_with_correct_uid() {
 
 #[tokio::test]
 async fn test_docker_compose_build_succeeds() {
-    let output = Command::new("docker-compose")
-        .args(&["-f", "docker/docker-compose.yml", "build", "mcp-server"])
+    // Try docker compose (v2) first, fall back to docker-compose (v1)
+    let output = Command::new("docker")
+        .args(&["compose", "-f", "docker/docker-compose.yml", "build", "mcp-server"])
         .output()
-        .expect("Failed to execute docker-compose build command");
+        .or_else(|_| {
+            Command::new("docker-compose")
+                .args(&["-f", "docker/docker-compose.yml", "build", "mcp-server"])
+                .output()
+        })
+        .expect("Failed to execute docker compose build command");
 
     // Cleanup: Remove any created images
-    let _ = Command::new("docker-compose")
-        .args(&["-f", "docker/docker-compose.yml", "down", "--rmi", "all"])
-        .output();
+    let _ = Command::new("docker")
+        .args(&["compose", "-f", "docker/docker-compose.yml", "down", "--rmi", "all"])
+        .output()
+        .or_else(|_| {
+            Command::new("docker-compose")
+                .args(&["-f", "docker/docker-compose.yml", "down", "--rmi", "all"])
+                .output()
+        });
 
     assert!(
         output.status.success(),

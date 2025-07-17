@@ -72,18 +72,3 @@ jobs:
         docker push $IMAGE_NAME:$VERSION
         docker push $IMAGE_NAME:latest
     
-    - name: Configure cargo for GitHub Packages
-      run: |
-        mkdir -p ~/.cargo
-        echo "[registries.github]" >> ~/.cargo/config.toml
-        echo "index = \"https://github.com/rust-lang/crates.io-index\"" >> ~/.cargo/config.toml
-        echo "" >> ~/.cargo/config.toml
-        echo "[registries.github.token]" >> ~/.cargo/config.toml
-        echo "token = \"${{ secrets.GITHUB_TOKEN }}\"" >> ~/.cargo/config.toml
-    
-    - name: Package and publish crate
-      env:
-        CARGO_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        cargo package --verbose
-        cargo publish --registry github --token ${{ secrets.GITHUB_TOKEN }}
