@@ -65,7 +65,9 @@ jobs:
     
     - name: Build and push Docker image
       run: |
-        IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/rust-mcp-server
+        # Convert repository owner to lowercase for Docker image name
+        OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        IMAGE_NAME=ghcr.io/${OWNER_LC}/rust-mcp-server
         VERSION=${GITHUB_REF#refs/tags/}
         
         docker build -f docker/Dockerfile -t $IMAGE_NAME:$VERSION -t $IMAGE_NAME:latest .
