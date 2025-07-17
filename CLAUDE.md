@@ -20,6 +20,11 @@ cargo run --release -- --mode=mcp-only    # MCP server only
 cargo run --release -- --mode=dashboard   # Dashboard only
 cargo run --release -- --mode=both        # Both (default)
 
+# Development mode with hot-reload
+./scripts/dev.sh       # Dashboard only with hot-reload
+./scripts/dev-both.sh  # Both MCP and dashboard with hot-reload
+cargo run -- --dev     # Run with dev mode manually
+
 # Watch CSS changes during development
 npm run watch-css
 
@@ -30,6 +35,29 @@ npm run build-js:prod  # Production build, minified
 # Docker deployment
 docker-compose -f docker/docker-compose.yml up --build
 ```
+
+### Hot-Reload Development Mode
+
+The server now supports hot-reload in development mode:
+
+```bash
+# Start dashboard with hot-reload
+./scripts/dev.sh
+
+# Or manually with cargo-watch
+cargo-watch -x "run -- --mode=dashboard --dev"
+
+# Or without cargo-watch (manual restarts)
+cargo run -- --mode=dashboard --dev
+```
+
+Features:
+- **Frontend Hot-Reload**: Changes to JS, CSS, HTML templates trigger automatic browser refresh
+- **Backend Auto-Compilation**: Rust code changes trigger automatic recompilation and restart
+- **Visual Indicator**: Orange "DEV MODE" badge in the UI when running with `--dev`
+- **File Watching**: Monitors `src/`, `templates/`, `static/`, and `config/` directories
+
+The hot-reload uses WebSocket to notify the browser when frontend files change. Backend changes require a full server restart, which cargo-watch handles automatically.
 
 ### Testing
 ```bash

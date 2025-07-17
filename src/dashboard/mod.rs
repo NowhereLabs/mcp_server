@@ -4,5 +4,6 @@
 //! support for live updates and RESTful APIs for metrics and status.
 
 pub mod handlers;
+pub mod hot_reload;
 pub mod server;
 pub mod websocket;

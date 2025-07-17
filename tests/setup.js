@@ -79,7 +79,18 @@ beforeEach(() => {
   };
   
   // Mock Alpine.store to return our mock stores
-  global.Alpine.store = vi.fn((name) => mockStores[name]);
+  global.Alpine.store = vi.fn((name) => {
+    if (!mockStores[name]) {
+      // Return a default mock for any unmocked stores
+      return {
+        addError: vi.fn(),
+        add: vi.fn(),
+        remove: vi.fn(),
+        clear: vi.fn()
+      };
+    }
+    return mockStores[name];
+  });
 });
 
 // Clean up after each test

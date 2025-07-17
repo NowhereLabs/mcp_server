@@ -179,9 +179,24 @@ cargo fmt && cargo clippy -- -D warnings && cargo test
 
 ### Development Mode
 
+The server includes hot-reload functionality for rapid development:
+
 ```bash
-# Watch CSS changes
-npm run watch-css
+# Start with hot-reload (recommended)
+./scripts/dev.sh         # Dashboard only
+./scripts/dev-both.sh    # MCP + Dashboard
+
+# Or manually with --dev flag
+cargo run -- --dev
+
+# Features in dev mode:
+# - Automatic browser refresh on frontend changes
+# - Auto-compilation on backend changes (with cargo-watch)
+# - Visual "DEV MODE" indicator in UI
+# - File watching for templates, CSS, JS, and Rust code
+
+# Traditional development commands
+npm run watch-css        # Watch CSS changes
 
 # Build JavaScript with sourcemaps
 npm run build-js:dev

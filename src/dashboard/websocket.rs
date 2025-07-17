@@ -2,13 +2,49 @@ use actix_web::{web, HttpRequest, HttpResponse, Result};
 use actix_ws::Message;
 use futures_util::StreamExt;
 
-use crate::shared::state::{AppState, SystemEvent};
+use crate::shared::{
+    config::Config,
+    state::{AppState, SystemEvent},
+};
+
+/// Validate WebSocket origin header
+fn validate_websocket_origin(req: &HttpRequest, config: &Config) -> bool {
+    // In development mode, allow all origins
+    if config.development.enable_cors {
+        return true;
+    }
+
+    // Check if origin header is present
+    let origin = match req.headers().get("Origin") {
+        Some(origin) => match origin.to_str() {
+            Ok(origin_str) => origin_str,
+            Err(_) => return false,
+        },
+        None => return false, // No origin header
+    };
+
+    // Check if origin is in allowed list
+    config
+        .security
+        .websocket_allowed_origins
+        .contains(&origin.to_string())
+}
 
 pub async fn websocket_handler(
     req: HttpRequest,
     stream: web::Payload,
     data: web::Data<AppState>,
+    config: web::Data<Config>,
 ) -> Result<HttpResponse> {
+    // Validate origin before establishing WebSocket connection
+    if !validate_websocket_origin(&req, &config) {
+        tracing::warn!(
+            "WebSocket connection rejected due to invalid origin: {:?}",
+            req.headers().get("Origin")
+        );
+        return Ok(HttpResponse::Forbidden().body("Invalid origin"));
+    }
+
     let (res, mut session, mut msg_stream) = actix_ws::handle(&req, stream)?;
 
     let state = data.get_ref().clone();
@@ -62,6 +98,18 @@ pub async fn websocket_handler(
                                 "message": message,
                                 "timestamp": chrono::Utc::now()
                             })
+                        }
+                        SystemEvent::Custom(payload) => {
+                            // Parse the custom payload if it's JSON, otherwise wrap it
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&payload) {
+                                json
+                            } else {
+                                serde_json::json!({
+                                    "type": "custom",
+                                    "payload": payload,
+                                    "timestamp": chrono::Utc::now()
+                                })
+                            }
                         }
                     };
 
@@ -159,6 +207,19 @@ pub async fn sse_handler(data: web::Data<AppState>) -> Result<HttpResponse> {
                             message
                         )
                     }))
+                }
+                SystemEvent::Custom(payload) => {
+                    // For SSE, emit custom events as-is if they're JSON
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&payload) {
+                        format!("event: custom\ndata: {json}\n\n")
+                    } else {
+                        let json_data = serde_json::json!({
+                            "type": "custom",
+                            "payload": payload,
+                            "timestamp": chrono::Utc::now().to_rfc3339()
+                        });
+                        format!("event: custom\ndata: {json_data}\n\n")
+                    }
                 }
             };
 

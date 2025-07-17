@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
 
 {% block title %}{{ title }} - MCP Dashboard{% endblock %}
+{% block version %}{{ version }}{% endblock %}
 
 {% block content %}
 <!-- Notification System -->
@@ -330,7 +331,10 @@
             // Update visual indicator in status card
             const statusElement = document.querySelector('.status-indicator');
             if (statusElement) {
-                statusElement.className = `status-indicator ${heartbeatStatus}`;
+                // Preserve existing animation classes
+                const animationClasses = statusElement.className.match(/animate-[^\s]+/g) || [];
+                const neonGlow = statusElement.className.includes('neon-glow') ? 'neon-glow' : '';
+                statusElement.className = `status-indicator ${heartbeatStatus} ${animationClasses.join(' ')} ${neonGlow}`.trim();
             }
             
             // Update heartbeat pulse animation

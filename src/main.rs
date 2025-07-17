@@ -4,7 +4,7 @@ mod shared;
 
 use std::sync::Arc;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use shared::{
     config::Config,
     state::{AppState, McpStatus, ServerInfo},
@@ -14,17 +14,25 @@ use shared::{
 #[command(name = "rust-mcp-server")]
 #[command(about = "A Rust MCP server with web dashboard")]
 struct Cli {
-    #[command(subcommand)]
-    command: Commands,
+    /// Run in development mode with hot-reload enabled
+    #[arg(long, global = true)]
+    dev: bool,
+
+    /// Operation mode
+    #[arg(long, value_enum, default_value = "both")]
+    mode: Mode,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Start MCP server on stdin/stdout
-    Mcp,
-    /// Start web dashboard on HTTP port 8080
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum Mode {
+    /// Start MCP server on stdin/stdout only
+    #[value(name = "mcp-only")]
+    MpcOnly,
+    /// Start web dashboard only
+    #[value(name = "dashboard")]
     Dashboard,
     /// Start both MCP server and dashboard
+    #[value(name = "both")]
     Both,
 }
 
@@ -51,6 +59,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::debug!("Server config: {:?}", config.server);
 
     let cli = Cli::parse();
+
+    // Log development mode status
+    if cli.dev {
+        tracing::info!("🚀 Running in development mode with hot-reload enabled");
+    }
 
     // Create shared state with configuration
     let state = AppState::new();
@@ -80,8 +93,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .event_tx
         .send(shared::state::SystemEvent::McpConnected);
 
-    match cli.command {
-        Commands::Mcp => {
+    match cli.mode {
+        Mode::MpcOnly => {
             println!("Starting MCP server on stdin/stdout");
 
             // Create and run official MCP server
@@ -92,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::error!("MCP server error: {}", e);
             }
         }
-        Commands::Dashboard => {
+        Mode::Dashboard => {
             println!(
                 "✅ Dashboard server starting at http://{}:{}",
                 config.server.dashboard_host, config.server.dashboard_port
@@ -100,11 +113,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("✅ MCP server tools and resources available");
             println!("✅ Real-time monitoring active");
 
-            if let Err(e) = dashboard::server::run_dashboard_with_config(state, config).await {
+            if let Err(e) =
+                dashboard::server::run_dashboard_with_config(state, config, cli.dev).await
+            {
                 tracing::error!("Dashboard server error: {}", e);
             }
         }
-        Commands::Both => {
+        Mode::Both => {
             println!("Starting both MCP server and dashboard");
             println!("✅ MCP server on stdin/stdout");
             println!(
@@ -119,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Run both servers concurrently
             tokio::select! {
                 _ = mcp_server.run(transport) => {},
-                _ = dashboard::server::run_dashboard_with_config(state, config) => {},
+                _ = dashboard::server::run_dashboard_with_config(state, config, cli.dev) => {},
                 _ = tokio::signal::ctrl_c() => {
                     tracing::info!("Received shutdown signal");
                 }

@@ -77,7 +77,6 @@ body {
 
 .status-indicator.connected {
     background: #27ae60;
-    animation: pulse 2s infinite;
 }
 
 .status-indicator.disconnected {

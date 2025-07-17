@@ -36,16 +36,35 @@ async fn test_docker_container_starts_and_responds() {
     let image_name = unique_image_name("rust-mcp-server-test");
     let container_name = unique_image_name("rust-mcp-server-test-container");
 
+    // Remove existing image if it exists
+    let _ = Command::new("docker")
+        .args(&["rmi", "-f", &image_name])
+        .output();
+
     // Build the image first
     println!("Building Docker image: {}", image_name);
     let build_output = Command::new("docker")
-        .args(&["build", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
     if !build_output.status.success() {
-        eprintln!("Docker build stderr: {}", String::from_utf8_lossy(&build_output.stderr));
-        eprintln!("Docker build stdout: {}", String::from_utf8_lossy(&build_output.stdout));
+        eprintln!(
+            "Docker build stderr: {}",
+            String::from_utf8_lossy(&build_output.stderr)
+        );
+        eprintln!(
+            "Docker build stdout: {}",
+            String::from_utf8_lossy(&build_output.stdout)
+        );
     }
 
     assert!(
@@ -53,13 +72,13 @@ async fn test_docker_container_starts_and_responds() {
         "Docker build failed: {}",
         String::from_utf8_lossy(&build_output.stderr)
     );
-    
+
     // Verify image exists
     let image_check = Command::new("docker")
         .args(&["images", "-q", &image_name])
         .output()
         .expect("Failed to check docker images");
-    
+
     assert!(
         !image_check.stdout.is_empty(),
         "Docker image {} was not created",
@@ -170,7 +189,13 @@ async fn test_docker_container_runs_with_correct_uid() {
 async fn test_docker_compose_build_succeeds() {
     // Try docker compose (v2) first, fall back to docker-compose (v1)
     let output = Command::new("docker")
-        .args(&["compose", "-f", "docker/docker-compose.yml", "build", "mcp-server"])
+        .args(&[
+            "compose",
+            "-f",
+            "docker/docker-compose.yml",
+            "build",
+            "mcp-server",
+        ])
         .output()
         .or_else(|_| {
             Command::new("docker-compose")
@@ -181,7 +206,14 @@ async fn test_docker_compose_build_succeeds() {
 
     // Cleanup: Remove any created images
     let _ = Command::new("docker")
-        .args(&["compose", "-f", "docker/docker-compose.yml", "down", "--rmi", "all"])
+        .args(&[
+            "compose",
+            "-f",
+            "docker/docker-compose.yml",
+            "down",
+            "--rmi",
+            "all",
+        ])
         .output()
         .or_else(|_| {
             Command::new("docker-compose")

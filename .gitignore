@@ -46,3 +46,7 @@ static/css/output.css
 /build/
 *.wasm
 *.wasm.d.ts
+
+# Development guide (private)
+DEVELOPMENT_GUIDE.md
+plan.md

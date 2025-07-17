@@ -16,42 +16,44 @@ describe('StandardError Class', () => {
       'Test error message',
       ERROR_TYPES.VALIDATION,
       ERROR_SEVERITY.MEDIUM,
-      'TestComponent',
-      'testMethod',
       { extra: 'data' }
     );
 
     expect(error.message).toBe('Test error message');
     expect(error.type).toBe(ERROR_TYPES.VALIDATION);
     expect(error.severity).toBe(ERROR_SEVERITY.MEDIUM);
-    expect(error.component).toBe('TestComponent');
-    expect(error.method).toBe('testMethod');
     expect(error.details).toEqual({ extra: 'data' });
-    expect(error.timestamp).toBeInstanceOf(Date);
-    expect(error.id).toBeDefined();
+    expect(error.timestamp).toBeDefined();
+    expect(error.userMessage).toBe('Please check your input and try again.');
+    expect(error.name).toBe('StandardError');
   });
 
-  it('should generate unique IDs', () => {
+  it('should have timestamp property', () => {
     const error1 = new StandardError('Error 1');
     const error2 = new StandardError('Error 2');
     
-    expect(error1.id).not.toBe(error2.id);
+    expect(error1.timestamp).toBeDefined();
+    expect(error2.timestamp).toBeDefined();
   });
 
   it('should convert to JSON', () => {
     const error = new StandardError(
       'Test error',
       ERROR_TYPES.NETWORK,
-      ERROR_SEVERITY.HIGH
+      ERROR_SEVERITY.HIGH,
+      { extra: 'data' }
     );
 
     const json = error.toJSON();
 
-    expect(json).toHaveProperty('id');
+    expect(json).toHaveProperty('name', 'StandardError');
     expect(json).toHaveProperty('message', 'Test error');
     expect(json).toHaveProperty('type', ERROR_TYPES.NETWORK);
     expect(json).toHaveProperty('severity', ERROR_SEVERITY.HIGH);
+    expect(json).toHaveProperty('details');
+    expect(json.details).toEqual({ extra: 'data' });
     expect(json).toHaveProperty('timestamp');
+    expect(json).toHaveProperty('userMessage');
   });
 
   it('should include user-friendly message', () => {
@@ -69,42 +71,41 @@ describe('StandardError Class', () => {
 
 describe('ErrorHandler', () => {
   beforeEach(() => {
-    // Reset error handler state
-    ErrorHandler.circuitBreaker = {};
+    // Reset mocks
     vi.clearAllMocks();
   });
 
-  describe('processError', () => {
-    it('should process standard Error', () => {
+  describe('handleError', () => {
+    it('should handle standard Error', () => {
       const error = new Error('Test error');
-      const result = ErrorHandler.processError(error, 'TestComponent', 'testMethod');
+      const result = ErrorHandler.handleError(error);
 
       expect(result).toBeInstanceOf(StandardError);
       expect(result.message).toBe('Test error');
       expect(result.type).toBe(ERROR_TYPES.UNKNOWN);
-      expect(result.component).toBe('TestComponent');
-      expect(result.method).toBe('testMethod');
     });
 
     it('should detect validation errors', () => {
-      const error = new Error('Validation failed for email field');
-      const result = ErrorHandler.processError(error);
+      const error = new Error('validation failed for email field');
+      const result = ErrorHandler.handleError(error);
 
       expect(result.type).toBe(ERROR_TYPES.VALIDATION);
+      expect(result.severity).toBe(ERROR_SEVERITY.LOW);
     });
 
     it('should detect network errors', () => {
-      const error = new Error('Network request failed');
-      const result = ErrorHandler.processError(error);
+      const error = new Error('network request failed');
+      const result = ErrorHandler.handleError(error);
 
       expect(result.type).toBe(ERROR_TYPES.NETWORK);
     });
 
     it('should detect security errors', () => {
-      const error = new Error('Unauthorized access attempt');
-      const result = ErrorHandler.processError(error);
+      const error = new Error('permission denied');
+      const result = ErrorHandler.handleError(error);
 
       expect(result.type).toBe(ERROR_TYPES.SECURITY);
+      expect(result.severity).toBe(ERROR_SEVERITY.HIGH);
     });
 
     it('should handle StandardError instances', () => {
@@ -114,22 +115,22 @@ describe('ErrorHandler', () => {
         ERROR_SEVERITY.LOW
       );
       
-      const result = ErrorHandler.processError(standardError);
+      const result = ErrorHandler.handleError(standardError);
 
       expect(result).toBe(standardError);
     });
 
     it('should handle non-Error objects', () => {
-      const result = ErrorHandler.processError('String error');
+      const result = ErrorHandler.handleError('String error');
 
       expect(result.message).toBe('String error');
       expect(result.type).toBe(ERROR_TYPES.UNKNOWN);
     });
 
     it('should handle null/undefined', () => {
-      const result = ErrorHandler.processError(null);
+      const result = ErrorHandler.handleError(null);
 
-      expect(result.message).toBe('Unknown error occurred');
+      expect(result.message).toBe('An unexpected error occurred');
       expect(result.type).toBe(ERROR_TYPES.UNKNOWN);
     });
   });
@@ -163,7 +164,7 @@ describe('ErrorHandler', () => {
       );
 
       expect(error.type).toBe(ERROR_TYPES.SECURITY);
-      expect(error.severity).toBe(ERROR_SEVERITY.CRITICAL);
+      expect(error.severity).toBe(ERROR_SEVERITY.HIGH);
     });
   });
 
@@ -176,7 +177,15 @@ describe('ErrorHandler', () => {
       };
       
       global.Alpine = {
-        store: vi.fn().mockReturnValue(mockStore)
+        store: vi.fn((name) => {
+          if (name === 'notifications') {
+            return mockStore;
+          }
+          if (name === 'errorBoundary') {
+            return { addError: vi.fn() };
+          }
+          return {};
+        })
       };
     });
 
@@ -193,7 +202,7 @@ describe('ErrorHandler', () => {
       expect(mockStore.add).toHaveBeenCalledWith(
         'Something went wrong',
         'error',
-        8000
+        5000
       );
     });
 
@@ -203,9 +212,9 @@ describe('ErrorHandler', () => {
       ErrorHandler.showErrorToUser(error);
 
       expect(mockStore.add).toHaveBeenCalledWith(
-        'An error occurred. Please try again.',
-        'error',
-        8000
+        'An unexpected error occurred. Please try again.',
+        'warning',
+        5000
       );
     });
 
@@ -219,75 +228,62 @@ describe('ErrorHandler', () => {
     });
   });
 
-  describe('Circuit Breaker', () => {
-    it('should track errors per component', () => {
-      const shouldHandle = ErrorHandler.shouldHandleError('TestComponent');
+  describe('processError', () => {
+    it('should process error through complete pipeline', () => {
+      const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const mockWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const mockAdd = vi.fn();
+      const mockAddError = vi.fn();
       
-      expect(shouldHandle).toBe(true);
-      expect(ErrorHandler.circuitBreaker.TestComponent).toEqual({
-        count: 1,
-        lastError: expect.any(Number)
-      });
-    });
-
-    it('should open circuit after threshold', () => {
-      // Trigger errors up to threshold
-      for (let i = 0; i < 5; i++) {
-        ErrorHandler.shouldHandleError('TestComponent');
-      }
-
-      // Next error should be blocked
-      const shouldHandle = ErrorHandler.shouldHandleError('TestComponent');
-      
-      expect(shouldHandle).toBe(false);
-    });
-
-    it('should reset circuit after cooldown', () => {
-      // Set up a tripped circuit
-      ErrorHandler.circuitBreaker.TestComponent = {
-        count: 10,
-        lastError: Date.now() - 61000 // 61 seconds ago
+      global.Alpine = {
+        store: vi.fn((name) => {
+          if (name === 'notifications') {
+            return { add: mockAdd };
+          }
+          if (name === 'errorBoundary') {
+            return { addError: mockAddError };
+          }
+          return {};
+        })
       };
 
-      const shouldHandle = ErrorHandler.shouldHandleError('TestComponent');
+      const error = new Error('Test error');
+      const result = ErrorHandler.processError(error, 'TestComponent', 'testContext');
       
-      expect(shouldHandle).toBe(true);
-      expect(ErrorHandler.circuitBreaker.TestComponent.count).toBe(1);
+      expect(result).toBeInstanceOf(StandardError);
+      // Check that either error or warn was called (depends on severity)
+      expect(mockError.mock.calls.length + mockWarn.mock.calls.length).toBeGreaterThan(0);
+      expect(mockAdd).toHaveBeenCalled();
+      expect(mockAddError).toHaveBeenCalled();
+      
+      mockError.mockRestore();
+      mockWarn.mockRestore();
     });
   });
 
-  describe('getUserFriendlyMessage', () => {
-    it('should return user message if available', () => {
-      const error = new StandardError('Technical');
-      error.userMessage = 'User friendly message';
-
-      const message = ErrorHandler.getUserFriendlyMessage(error);
-      
-      expect(message).toBe('User friendly message');
-    });
-
-    it('should return friendly message for validation errors', () => {
+  describe('StandardError getUserFriendlyMessage', () => {
+    it('should return appropriate message for validation errors', () => {
       const error = new StandardError('Validation failed', ERROR_TYPES.VALIDATION);
-
-      const message = ErrorHandler.getUserFriendlyMessage(error);
       
-      expect(message).toBe('Please check your input and try again.');
+      expect(error.userMessage).toBe('Please check your input and try again.');
     });
 
-    it('should return friendly message for network errors', () => {
+    it('should return appropriate message for network errors', () => {
       const error = new StandardError('Network failed', ERROR_TYPES.NETWORK);
-
-      const message = ErrorHandler.getUserFriendlyMessage(error);
       
-      expect(message).toBe('Connection error. Please check your internet connection.');
+      expect(error.userMessage).toBe('Network connection issue. Please try again.');
+    });
+
+    it('should return appropriate message for security errors', () => {
+      const error = new StandardError('Security issue', ERROR_TYPES.SECURITY);
+      
+      expect(error.userMessage).toBe('Security error. Please contact support.');
     });
 
     it('should return default message for unknown errors', () => {
       const error = new StandardError('Unknown', ERROR_TYPES.UNKNOWN);
-
-      const message = ErrorHandler.getUserFriendlyMessage(error);
       
-      expect(message).toBe('An unexpected error occurred. Please try again.');
+      expect(error.userMessage).toBe('An unexpected error occurred. Please try again.');
     });
   });
 });

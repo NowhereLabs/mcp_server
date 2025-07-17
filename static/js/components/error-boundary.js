@@ -211,32 +211,154 @@ document.addEventListener('alpine:init', () => {
                 'Network error',
                 'Failed to fetch',
                 'Security error',
-                'Permission denied'
+                'Permission denied',
+                'WebSocket connection error',
+                'Hot-reload connection lost',
+                'Origin validation failed',
+                'Authentication failed',
+                'CORS error',
+                'Cannot read properties of undefined',
+                'Maximum call stack size exceeded',
+                'Out of memory'
             ];
             
+            // Check for critical error patterns
             const hasCriticalErrors = recentErrors.some(error => 
                 criticalPatterns.some(pattern => 
                     error.error.toLowerCase().includes(pattern.toLowerCase())
                 )
             );
             
-            if (hasCriticalErrors) {
-                this.handleCriticalErrors();
+            // Check for error frequency (more than 3 errors in last 5 minutes)
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            const recentFrequentErrors = this.errors.filter(error => 
+                new Date(error.timestamp) > fiveMinutesAgo
+            );
+            
+            const hasFrequentErrors = recentFrequentErrors.length > 3;
+            
+            // Check for component-specific error storms
+            const componentErrorCounts = {};
+            recentErrors.forEach(error => {
+                componentErrorCounts[error.component] = (componentErrorCounts[error.component] || 0) + 1;
+            });
+            
+            const hasComponentErrorStorm = Object.values(componentErrorCounts).some(count => count > 2);
+            
+            if (hasCriticalErrors || hasFrequentErrors || hasComponentErrorStorm) {
+                this.handleCriticalErrors({
+                    hasCriticalErrors,
+                    hasFrequentErrors,
+                    hasComponentErrorStorm,
+                    errorCounts: componentErrorCounts
+                });
             }
         },
         
-        handleCriticalErrors() {
+        handleCriticalErrors(errorContext) {
+            const {
+                hasCriticalErrors,
+                hasFrequentErrors,
+                hasComponentErrorStorm,
+                errorCounts
+            } = errorContext;
+            
+            // Generate appropriate error message
+            let errorMessage = 'Critical system errors detected.';
+            let recoveryAction = 'Please refresh the page.';
+            
+            if (hasCriticalErrors) {
+                errorMessage = 'Critical system errors detected.';
+                recoveryAction = 'Please refresh the page or contact support.';
+            } else if (hasFrequentErrors) {
+                errorMessage = 'Multiple errors detected in a short time.';
+                recoveryAction = 'The system will attempt automatic recovery.';
+            } else if (hasComponentErrorStorm) {
+                const problematicComponents = Object.entries(errorCounts)
+                    .filter(([, count]) => count > 2)
+                    .map(([component]) => component)
+                    .join(', ');
+                errorMessage = `Component errors detected: ${problematicComponents}`;
+                recoveryAction = 'Affected components will be restarted.';
+            }
+            
             // Show critical error notification
             if (Alpine.store('notifications')) {
                 Alpine.store('notifications').add(
-                    'Critical system errors detected. Please refresh the page.',
+                    `${errorMessage} ${recoveryAction}`,
                     'error',
-                    10000
+                    15000
                 );
             }
             
             // Log critical errors for monitoring
-            console.error('Critical errors detected:', this.errors.slice(0, 5));
+            console.error('Critical errors detected:', {
+                context: errorContext,
+                recentErrors: this.errors.slice(0, 5),
+                timestamp: new Date().toISOString()
+            });
+            
+            // Attempt recovery actions
+            this.attemptRecovery(errorContext);
+        },
+        
+        attemptRecovery(errorContext) {
+            const { hasComponentErrorStorm, errorCounts } = errorContext;
+            
+            // If it's a component error storm, try to recover specific components
+            if (hasComponentErrorStorm) {
+                Object.entries(errorCounts).forEach(([component, count]) => {
+                    if (count > 2) {
+                        this.recoverComponent(component);
+                    }
+                });
+            }
+            
+            // If errors persist, suggest page refresh after a delay
+            setTimeout(() => {
+                const currentErrors = this.errors.filter(error => 
+                    new Date(error.timestamp) > new Date(Date.now() - 2 * 60 * 1000)
+                );
+                
+                if (currentErrors.length > 2) {
+                    this.suggestPageRefresh();
+                }
+            }, 30000); // Check again in 30 seconds
+        },
+        
+        recoverComponent(componentName) {
+            try {
+                // Find and reinitialize the component
+                const componentElements = document.querySelectorAll(`[x-data*="${componentName}"]`);
+                
+                componentElements.forEach(element => {
+                    if (element._x_dataStack && element._x_dataStack.length > 0) {
+                        const componentData = element._x_dataStack[0];
+                        
+                        // If component has a recovery method, call it
+                        if (componentData.recoverFromError) {
+                            componentData.recoverFromError();
+                        } else if (componentData.init) {
+                            // Otherwise, try to reinitialize
+                            componentData.init();
+                        }
+                    }
+                });
+                
+                console.log(`Attempted recovery for component: ${componentName}`);
+            } catch (error) {
+                console.error(`Failed to recover component ${componentName}:`, error);
+            }
+        },
+        
+        suggestPageRefresh() {
+            if (Alpine.store('notifications')) {
+                Alpine.store('notifications').add(
+                    'System errors persist. Consider refreshing the page to restore full functionality.',
+                    'warning',
+                    0 // No auto-dismiss
+                );
+            }
         },
         
         clearErrors() {
@@ -270,6 +392,88 @@ document.addEventListener('alpine:init', () => {
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 3)
                 .map(([error, count]) => ({ error, count }));
+        },
+        
+        generateErrorReport() {
+            const stats = this.getErrorStats();
+            const report = {
+                timestamp: new Date().toISOString(),
+                summary: {
+                    totalErrors: stats.total,
+                    recentErrors: stats.recent,
+                    affectedComponents: stats.components.length,
+                    mostCommonErrors: stats.mostCommon
+                },
+                details: {
+                    errors: this.errors.slice(0, 20), // Last 20 errors
+                    components: stats.components,
+                    timeRange: {
+                        oldest: this.errors[this.errors.length - 1]?.timestamp,
+                        newest: this.errors[0]?.timestamp
+                    }
+                },
+                recommendations: this.generateRecommendations()
+            };
+            
+            return report;
+        },
+        
+        generateRecommendations() {
+            const recommendations = [];
+            const stats = this.getErrorStats();
+            
+            // High error rate
+            if (stats.recent > 5) {
+                recommendations.push({
+                    type: 'high_error_rate',
+                    message: 'High error rate detected in the last hour',
+                    action: 'Consider refreshing the page or checking your internet connection'
+                });
+            }
+            
+            // Multiple component errors
+            if (stats.components.length > 3) {
+                recommendations.push({
+                    type: 'multiple_components',
+                    message: 'Multiple components are experiencing errors',
+                    action: 'System-wide issue detected - page refresh recommended'
+                });
+            }
+            
+            // Specific error patterns
+            const commonErrors = stats.mostCommon;
+            commonErrors.forEach(({ error, count }) => {
+                if (count > 2) {
+                    if (error.toLowerCase().includes('network')) {
+                        recommendations.push({
+                            type: 'network_issue',
+                            message: 'Network connectivity issues detected',
+                            action: 'Check your internet connection and try again'
+                        });
+                    } else if (error.toLowerCase().includes('websocket')) {
+                        recommendations.push({
+                            type: 'websocket_issue',
+                            message: 'WebSocket connection problems detected',
+                            action: 'Hot-reload functionality may be affected'
+                        });
+                    }
+                }
+            });
+            
+            return recommendations;
+        },
+        
+        exportErrorReport() {
+            const report = this.generateErrorReport();
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `error-report-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
     });
 });

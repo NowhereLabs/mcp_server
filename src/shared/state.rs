@@ -362,6 +362,8 @@ pub enum SystemEvent {
     ResourceAccessed { uri: String },
     /// System error occurred
     Error { message: String },
+    /// Custom event for hot-reload and other purposes
+    Custom(String),
 }
 
 /// Extended system event with full details (for compatibility)

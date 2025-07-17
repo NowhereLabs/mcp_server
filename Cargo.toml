@@ -55,6 +55,10 @@ futures-util = "0.3"
 num_cpus = "1.16"
 clap = { version = "4.5", features = ["derive"] }
 
+# File watching for hot-reload
+notify = "6.1"
+notify-debouncer-mini = "0.4"
+
 # Testing dependencies
 [dev-dependencies]
 tokio-test = "0.4"

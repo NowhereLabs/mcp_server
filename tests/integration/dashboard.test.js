@@ -335,7 +335,6 @@ describe('Dashboard Integration Tests', () => {
     });
 
     it('should implement retry logic for failed requests', async () => {
-      vi.useFakeTimers();
       let attempts = 0;
 
       // Mock failures then success
@@ -354,25 +353,18 @@ describe('Dashboard Integration Tests', () => {
             return await fetch(url);
           } catch (e) {
             if (i === maxRetries) throw e;
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+            // Use a short delay for testing
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       };
 
-      const responsePromise = retryFetch('/api/metrics');
-      
-      // Advance timers for retries
-      vi.advanceTimersByTime(1000); // First retry after 1s
-      vi.advanceTimersByTime(2000); // Second retry after 2s
-
-      const response = await responsePromise;
+      const response = await retryFetch('/api/metrics');
       const data = await response.json();
 
       expect(attempts).toBe(3);
       expect(data.success).toBe(true);
-      
-      vi.useRealTimers();
-    });
+    }, 15000);
   });
 
   describe('Authentication Integration', () => {
