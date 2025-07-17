@@ -37,15 +37,33 @@ async fn test_docker_container_starts_and_responds() {
     let container_name = unique_image_name("rust-mcp-server-test-container");
 
     // Build the image first
+    println!("Building Docker image: {}", image_name);
     let build_output = Command::new("docker")
         .args(&["build", "-f", "docker/Dockerfile", "-t", &image_name, "."])
         .output()
         .expect("Failed to execute docker build command");
 
+    if !build_output.status.success() {
+        eprintln!("Docker build stderr: {}", String::from_utf8_lossy(&build_output.stderr));
+        eprintln!("Docker build stdout: {}", String::from_utf8_lossy(&build_output.stdout));
+    }
+
     assert!(
         build_output.status.success(),
         "Docker build failed: {}",
         String::from_utf8_lossy(&build_output.stderr)
+    );
+    
+    // Verify image exists
+    let image_check = Command::new("docker")
+        .args(&["images", "-q", &image_name])
+        .output()
+        .expect("Failed to check docker images");
+    
+    assert!(
+        !image_check.stdout.is_empty(),
+        "Docker image {} was not created",
+        image_name
     );
 
     // Start the container

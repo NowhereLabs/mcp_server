@@ -55,7 +55,7 @@ jobs:
         npm run build-js:prod
     
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose -- --test-threads=1
     
     - name: Build release
       run: cargo build --release --verbose
