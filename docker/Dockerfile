@@ -45,7 +45,8 @@ RUN RUSTFLAGS="-D warnings" cargo build --release && rm -rf src
 COPY src ./src
 COPY templates ./templates
 COPY static ./static
-COPY .env ./.env
+# Copy .env.example as .env to provide default configuration
+COPY .env.example ./.env
 
 # Copy the built CSS from the css-builder stage
 COPY --from=css-builder /app/static/css/output.css ./static/css/
