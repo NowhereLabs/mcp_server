@@ -108,6 +108,7 @@ fn sanitize_tool_input(input: &str) -> Result<String, ErrorResponse> {
 struct DashboardTemplate {
     title: String,
     version: String,
+    dev_mode: bool,
 }
 
 #[derive(Template)]
@@ -173,10 +174,11 @@ struct DashboardMetrics {
     resources_available: usize,
 }
 
-pub async fn index() -> Result<HttpResponse> {
+pub async fn index(dev_mode: web::Data<bool>) -> Result<HttpResponse> {
     let template = DashboardTemplate {
         title: "MCP Server Dashboard".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        dev_mode: **dev_mode,
     };
 
     Ok(HttpResponse::Ok()

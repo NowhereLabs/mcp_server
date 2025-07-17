@@ -63,6 +63,18 @@ pub async fn websocket_handler(
                                 "timestamp": chrono::Utc::now()
                             })
                         }
+                        SystemEvent::Custom(payload) => {
+                            // Parse the custom payload if it's JSON, otherwise wrap it
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&payload) {
+                                json
+                            } else {
+                                serde_json::json!({
+                                    "type": "custom",
+                                    "payload": payload,
+                                    "timestamp": chrono::Utc::now()
+                                })
+                            }
+                        }
                     };
 
                     if session.text(event_json.to_string()).await.is_err() {
@@ -159,6 +171,18 @@ pub async fn sse_handler(data: web::Data<AppState>) -> Result<HttpResponse> {
                             message
                         )
                     }))
+                }
+                SystemEvent::Custom(payload) => {
+                    // For SSE, emit custom events as-is if they're JSON
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&payload) {
+                        format!("event: custom\ndata: {}\n\n", json)
+                    } else {
+                        format!("event: custom\ndata: {}\n\n", serde_json::json!({
+                            "type": "custom",
+                            "payload": payload,
+                            "timestamp": chrono::Utc::now().to_rfc3339()
+                        }))
+                    }
                 }
             };
 

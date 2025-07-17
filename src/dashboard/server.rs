@@ -2,6 +2,7 @@ use actix_files::Files;
 use actix_web::{middleware, web, App, HttpServer};
 
 use crate::dashboard::handlers;
+use crate::dashboard::hot_reload::{HotReloadWatcher, ReloadEvent};
 use crate::dashboard::websocket;
 use crate::shared::{config::Config, state::AppState};
 
@@ -30,22 +31,54 @@ fn add_security_headers() -> middleware::DefaultHeaders {
 // Provides simplified interface using default configuration
 #[allow(dead_code)]
 pub async fn run_dashboard(state: AppState) -> std::io::Result<()> {
-    run_dashboard_with_config(state, Config::default()).await
+    run_dashboard_with_config(state, Config::default(), false).await
 }
 
-pub async fn run_dashboard_with_config(state: AppState, config: Config) -> std::io::Result<()> {
+pub async fn run_dashboard_with_config(state: AppState, config: Config, dev_mode: bool) -> std::io::Result<()> {
     let bind_address = format!(
         "{}:{}",
         config.server.dashboard_host, config.server.dashboard_port
     );
     tracing::info!("Starting dashboard server on http://{}", bind_address);
+    if dev_mode {
+        tracing::info!("🔥 Hot-reload enabled - file changes will trigger automatic refresh");
+        
+        // Start hot reload watcher
+        let (watcher, mut reload_rx) = HotReloadWatcher::new(state.clone());
+        if let Err(e) = watcher.start().await {
+            tracing::error!("Failed to start hot reload watcher: {}", e);
+        }
+        
+        // Spawn task to handle reload events
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            while let Ok(event) = reload_rx.recv().await {
+                match event {
+                    ReloadEvent::FrontendChanged => {
+                        // Broadcast reload message to all connected WebSocket clients
+                        let reload_msg = crate::dashboard::hot_reload::BrowserReloadMessage::reload();
+                        let _ = state_clone.event_tx.send(
+                            crate::shared::state::SystemEvent::Custom(
+                                serde_json::to_string(&reload_msg).unwrap_or_default()
+                            )
+                        );
+                    }
+                    ReloadEvent::BackendChanged => {
+                        tracing::info!("⚠️  Backend files changed - manual restart required (run with cargo-watch for auto-restart)");
+                    }
+                }
+            }
+        });
+    }
 
     let _enable_cors = config.development.enable_cors;
     let _enable_debug_routes = config.development.enable_debug_routes;
     let app = HttpServer::new(move || {
+        let app_data_dev_mode = dev_mode;
         let app_builder = App::new()
             .app_data(web::Data::new(state.clone()))
             .app_data(web::Data::new(config.clone()))
+            .app_data(web::Data::new(app_data_dev_mode))
             .wrap(middleware::Logger::default())
             .wrap(middleware::NormalizePath::trim())
             .wrap(add_security_headers());
