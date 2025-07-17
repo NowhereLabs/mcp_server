@@ -47,11 +47,16 @@ pub async fn run_dashboard_with_config(
     if dev_mode {
         tracing::info!("🔥 Hot-reload enabled - file changes will trigger automatic refresh");
 
+        // Create shutdown channel for hot reload watcher
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+
         // Start hot reload watcher
-        let (watcher, mut reload_rx) = HotReloadWatcher::new(state.clone());
-        if let Err(e) = watcher.start().await {
-            tracing::error!("Failed to start hot reload watcher: {}", e);
-        }
+        let (watcher, mut reload_rx) = HotReloadWatcher::new(state.clone(), config.clone());
+        let watcher_handle = tokio::spawn(async move {
+            if let Err(e) = watcher.start(shutdown_rx).await {
+                tracing::error!("Failed to start hot reload watcher: {}", e);
+            }
+        });
 
         // Spawn task to handle reload events
         let state_clone = state.clone();
@@ -74,6 +79,16 @@ pub async fn run_dashboard_with_config(
                     }
                 }
             }
+        });
+
+        // Handle graceful shutdown of watcher on app termination
+        tokio::spawn(async move {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to listen for ctrl+c");
+            tracing::info!("Shutting down hot-reload watcher...");
+            let _ = shutdown_tx.send(());
+            let _ = watcher_handle.await;
         });
     }
 

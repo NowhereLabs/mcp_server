@@ -24,6 +24,7 @@ pub struct SecurityConfig {
     pub max_concurrent_tool_calls: usize,
     pub max_file_size_bytes: u64,
     pub allowed_file_extensions: Vec<String>,
+    pub websocket_allowed_origins: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +43,7 @@ pub struct ResourceLimitsConfig {
 pub struct DevelopmentConfig {
     pub enable_cors: bool,
     pub enable_debug_routes: bool,
+    pub hot_reload_debounce_ms: u64,
 }
 
 impl Default for Config {
@@ -60,6 +62,10 @@ impl Default for Config {
                     .into_iter()
                     .map(String::from)
                     .collect(),
+                websocket_allowed_origins: vec![
+                    "http://localhost:8080".to_string(),
+                    "http://127.0.0.1:8080".to_string(),
+                ],
             },
             rate_limiting: RateLimitingConfig {
                 requests_per_minute: 60,
@@ -72,6 +78,7 @@ impl Default for Config {
             development: DevelopmentConfig {
                 enable_cors: false,
                 enable_debug_routes: false,
+                hot_reload_debounce_ms: 500,
             },
         }
     }
@@ -131,6 +138,11 @@ impl Config {
                 .collect();
         }
 
+        if let Ok(origins) = env::var("WEBSOCKET_ALLOWED_ORIGINS") {
+            config.security.websocket_allowed_origins =
+                origins.split(',').map(|s| s.trim().to_string()).collect();
+        }
+
         // Rate limiting configuration
         if let Ok(rpm) = env::var("RATE_LIMIT_REQUESTS_PER_MINUTE") {
             config.rate_limiting.requests_per_minute = rpm.parse().map_err(|_| {
@@ -181,6 +193,14 @@ impl Config {
             })?;
         }
 
+        if let Ok(debounce) = env::var("HOT_RELOAD_DEBOUNCE_MS") {
+            config.development.hot_reload_debounce_ms = debounce.parse().map_err(|_| {
+                crate::server::error::McpServerError::Config(
+                    "Invalid HOT_RELOAD_DEBOUNCE_MS".to_string(),
+                )
+            })?;
+        }
+
         Ok(config)
     }
 
@@ -222,6 +242,9 @@ impl Config {
         // Validate boolean environment variables
         Self::validate_boolean_env("ENABLE_CORS")?;
         Self::validate_boolean_env("ENABLE_DEBUG_ROUTES")?;
+
+        // Validate hot reload debounce timing
+        Self::validate_numeric_env("HOT_RELOAD_DEBOUNCE_MS", 50, 5000)?;
 
         Ok(())
     }

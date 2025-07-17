@@ -2,13 +2,49 @@ use actix_web::{web, HttpRequest, HttpResponse, Result};
 use actix_ws::Message;
 use futures_util::StreamExt;
 
-use crate::shared::state::{AppState, SystemEvent};
+use crate::shared::{
+    config::Config,
+    state::{AppState, SystemEvent},
+};
+
+/// Validate WebSocket origin header
+fn validate_websocket_origin(req: &HttpRequest, config: &Config) -> bool {
+    // In development mode, allow all origins
+    if config.development.enable_cors {
+        return true;
+    }
+
+    // Check if origin header is present
+    let origin = match req.headers().get("Origin") {
+        Some(origin) => match origin.to_str() {
+            Ok(origin_str) => origin_str,
+            Err(_) => return false,
+        },
+        None => return false, // No origin header
+    };
+
+    // Check if origin is in allowed list
+    config
+        .security
+        .websocket_allowed_origins
+        .contains(&origin.to_string())
+}
 
 pub async fn websocket_handler(
     req: HttpRequest,
     stream: web::Payload,
     data: web::Data<AppState>,
+    config: web::Data<Config>,
 ) -> Result<HttpResponse> {
+    // Validate origin before establishing WebSocket connection
+    if !validate_websocket_origin(&req, &config) {
+        tracing::warn!(
+            "WebSocket connection rejected due to invalid origin: {:?}",
+            req.headers().get("Origin")
+        );
+        return Ok(HttpResponse::Forbidden().body("Invalid origin"));
+    }
+
     let (res, mut session, mut msg_stream) = actix_ws::handle(&req, stream)?;
 
     let state = data.get_ref().clone();
