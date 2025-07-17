@@ -292,8 +292,10 @@ describe('MCP Server End-to-End Tests', () => {
       // Simulate periodic metric fetching
       const fetchMetrics = async () => {
         const response = await fetch(`${baseUrl}/api/metrics`);
-        const data = await response.json();
-        metricsHistory.push(data);
+        if (response && response.ok) {
+          const data = await response.json();
+          metricsHistory.push(data);
+        }
       };
 
       const interval = setInterval(fetchMetrics, 5000);

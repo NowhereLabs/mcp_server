@@ -17,7 +17,7 @@ struct Cli {
     /// Run in development mode with hot-reload enabled
     #[arg(long, global = true)]
     dev: bool,
-    
+
     /// Operation mode
     #[arg(long, value_enum, default_value = "both")]
     mode: Mode,
@@ -113,7 +113,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("✅ MCP server tools and resources available");
             println!("✅ Real-time monitoring active");
 
-            if let Err(e) = dashboard::server::run_dashboard_with_config(state, config, cli.dev).await {
+            if let Err(e) =
+                dashboard::server::run_dashboard_with_config(state, config, cli.dev).await
+            {
                 tracing::error!("Dashboard server error: {}", e);
             }
         }

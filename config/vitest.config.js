@@ -51,9 +51,9 @@ export default defineConfig({
   // Resolve aliases for cleaner imports in tests
   resolve: {
     alias: {
-      '@components': resolve(__dirname, './static/js/components'),
-      '@utils': resolve(__dirname, './static/js/utils'),
-      '@': resolve(__dirname, './static/js')
+      '@components': resolve(__dirname, '../static/js/components'),
+      '@utils': resolve(__dirname, '../static/js/utils'),
+      '@': resolve(__dirname, '../static/js')
     }
   },
   

@@ -175,13 +175,14 @@ pub async fn sse_handler(data: web::Data<AppState>) -> Result<HttpResponse> {
                 SystemEvent::Custom(payload) => {
                     // For SSE, emit custom events as-is if they're JSON
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&payload) {
-                        format!("event: custom\ndata: {}\n\n", json)
+                        format!("event: custom\ndata: {json}\n\n")
                     } else {
-                        format!("event: custom\ndata: {}\n\n", serde_json::json!({
+                        let json_data = serde_json::json!({
                             "type": "custom",
                             "payload": payload,
                             "timestamp": chrono::Utc::now().to_rfc3339()
-                        }))
+                        });
+                        format!("event: custom\ndata: {json_data}\n\n")
                     }
                 }
             };

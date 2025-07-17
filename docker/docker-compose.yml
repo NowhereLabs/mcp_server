@@ -37,7 +37,7 @@ services:
       # Production settings (disable debug features)
       - ENABLE_CORS=false
       - ENABLE_DEBUG_ROUTES=false
-    command: ["./rust-mcp-server", "dashboard"]
+    command: ["./rust-mcp-server", "--mode=dashboard"]
     volumes:
       # Mount a temporary directory for file operations with correct UID
       - /tmp/mcp-server:/tmp/mcp-server
@@ -92,7 +92,7 @@ services:
       # Development settings (enable debug features)
       - ENABLE_CORS=true
       - ENABLE_DEBUG_ROUTES=true
-    command: ["./rust-mcp-server", "dashboard"]
+    command: ["./rust-mcp-server", "--mode=dashboard"]
     volumes:
       # Mount a temporary directory for file operations with correct UID
       - /tmp/mcp-server:/tmp/mcp-server

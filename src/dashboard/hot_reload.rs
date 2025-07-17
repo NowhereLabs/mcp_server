@@ -21,24 +21,18 @@ pub struct HotReloadWatcher {
 impl HotReloadWatcher {
     pub fn new(state: AppState) -> (Self, broadcast::Receiver<ReloadEvent>) {
         let (reload_tx, reload_rx) = broadcast::channel(100);
-        
-        (
-            Self {
-                state,
-                reload_tx,
-            },
-            reload_rx,
-        )
+
+        (Self { state, reload_tx }, reload_rx)
     }
 
     pub async fn start(&self) -> anyhow::Result<()> {
         let reload_tx = self.reload_tx.clone();
         let _state = self.state.clone();
-        
+
         // Spawn blocking thread for file watching
         tokio::task::spawn_blocking(move || {
             let reload_tx = reload_tx.clone();
-            
+
             // Create debounced watcher (waits 500ms after last change)
             let mut debouncer = new_debouncer(
                 Duration::from_millis(500),
@@ -47,24 +41,28 @@ impl HotReloadWatcher {
                         Ok(events) => {
                             for event in events {
                                 let path = event.path.to_string_lossy();
-                                
+
                                 // Determine reload type based on file extension
                                 let reload_event = if path.ends_with(".rs") {
                                     ReloadEvent::BackendChanged
-                                } else if path.ends_with(".js") 
-                                    || path.ends_with(".css") 
+                                } else if path.ends_with(".js")
+                                    || path.ends_with(".css")
                                     || path.ends_with(".html")
-                                    || path.ends_with(".askama") {
+                                    || path.ends_with(".askama")
+                                {
                                     ReloadEvent::FrontendChanged
                                 } else {
                                     continue;
                                 };
-                                
+
                                 // Send reload event
                                 if let Err(e) = reload_tx.send(reload_event.clone()) {
                                     tracing::debug!("No active reload listeners: {}", e);
                                 } else {
-                                    tracing::info!("🔄 Detected change in {:?}, triggering reload", path);
+                                    tracing::info!(
+                                        "🔄 Detected change in {:?}, triggering reload",
+                                        path
+                                    );
                                 }
                             }
                         }
@@ -73,27 +71,28 @@ impl HotReloadWatcher {
                         }
                     }
                 },
-            ).expect("Failed to create file watcher");
-            
+            )
+            .expect("Failed to create file watcher");
+
             // Watch directories
             let watcher = debouncer.watcher();
-            
+
             // Watch frontend directories
             let _ = watcher.watch(Path::new("./static"), RecursiveMode::Recursive);
             let _ = watcher.watch(Path::new("./templates"), RecursiveMode::Recursive);
             let _ = watcher.watch(Path::new("./config"), RecursiveMode::Recursive);
-            
+
             // Watch Rust source (for informational purposes - won't auto-reload)
             let _ = watcher.watch(Path::new("./src"), RecursiveMode::Recursive);
-            
+
             tracing::info!("📁 File watcher started for hot-reload");
-            
+
             // Keep the watcher alive
             loop {
                 std::thread::sleep(Duration::from_secs(1));
             }
         });
-        
+
         Ok(())
     }
 }

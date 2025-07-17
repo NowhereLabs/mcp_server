@@ -34,7 +34,11 @@ pub async fn run_dashboard(state: AppState) -> std::io::Result<()> {
     run_dashboard_with_config(state, Config::default(), false).await
 }
 
-pub async fn run_dashboard_with_config(state: AppState, config: Config, dev_mode: bool) -> std::io::Result<()> {
+pub async fn run_dashboard_with_config(
+    state: AppState,
+    config: Config,
+    dev_mode: bool,
+) -> std::io::Result<()> {
     let bind_address = format!(
         "{}:{}",
         config.server.dashboard_host, config.server.dashboard_port
@@ -42,13 +46,13 @@ pub async fn run_dashboard_with_config(state: AppState, config: Config, dev_mode
     tracing::info!("Starting dashboard server on http://{}", bind_address);
     if dev_mode {
         tracing::info!("🔥 Hot-reload enabled - file changes will trigger automatic refresh");
-        
+
         // Start hot reload watcher
         let (watcher, mut reload_rx) = HotReloadWatcher::new(state.clone());
         if let Err(e) = watcher.start().await {
             tracing::error!("Failed to start hot reload watcher: {}", e);
         }
-        
+
         // Spawn task to handle reload events
         let state_clone = state.clone();
         tokio::spawn(async move {
@@ -56,12 +60,14 @@ pub async fn run_dashboard_with_config(state: AppState, config: Config, dev_mode
                 match event {
                     ReloadEvent::FrontendChanged => {
                         // Broadcast reload message to all connected WebSocket clients
-                        let reload_msg = crate::dashboard::hot_reload::BrowserReloadMessage::reload();
-                        let _ = state_clone.event_tx.send(
-                            crate::shared::state::SystemEvent::Custom(
-                                serde_json::to_string(&reload_msg).unwrap_or_default()
-                            )
-                        );
+                        let reload_msg =
+                            crate::dashboard::hot_reload::BrowserReloadMessage::reload();
+                        let _ =
+                            state_clone
+                                .event_tx
+                                .send(crate::shared::state::SystemEvent::Custom(
+                                    serde_json::to_string(&reload_msg).unwrap_or_default(),
+                                ));
                     }
                     ReloadEvent::BackendChanged => {
                         tracing::info!("⚠️  Backend files changed - manual restart required (run with cargo-watch for auto-restart)");
