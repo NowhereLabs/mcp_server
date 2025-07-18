@@ -54,9 +54,10 @@ cp .env.example .env
 
 Follow the existing code structure:
 - Rust code in `src/`
-- Frontend assets in `static/`
+- TypeScript frontend assets in `static/js/`
+- CSS in `static/css/`
 - Templates in `templates/`
-- Tests alongside code or in `tests/`
+- Comprehensive tests in `tests/` (46 Rust + 123 TypeScript)
 
 ### 2. Adding New Features
 
@@ -77,13 +78,18 @@ touch src/server/your_tool.rs
 # Watch CSS changes during development
 npm run watch-css
 
-# Build JavaScript with sourcemaps
+# Build TypeScript with sourcemaps
 npm run build-js:dev
+
+# Type-check TypeScript without emitting
+npm run type-check
 ```
 
 ## Testing Your Changes
 
 ### 1. Run All Tests Locally
+
+Our comprehensive test suite includes 174 tests:
 
 ```bash
 # Format code first
@@ -92,14 +98,26 @@ cargo fmt
 # Run linter
 cargo clippy -- -D warnings
 
-# Run all Rust tests
-cargo test
+# TypeScript type checking
+npm run type-check
 
-# Run JavaScript tests
-npm test
+# Run complete test suite
+cargo test && npm test
 
-# Run Docker tests (requires Docker)
-cargo test --test docker_integration_tests -- --test-threads=1
+# Rust tests (46 total)
+cargo test --lib --bins                      # Unit tests (10)
+cargo test --test integration_tests          # Integration tests (5)
+cargo test --test dashboard_tests            # Dashboard tests (7)
+cargo test --test websocket_origin_tests     # WebSocket tests (6)
+cargo test --test hot_reload_tests           # Hot-reload tests (8)
+cargo test --test basic_integration          # Basic integration (9)
+
+# TypeScript tests (123 total)
+npm test                                      # All TypeScript tests
+npm run test:coverage                         # With coverage report
+
+# Docker tests (5 total, optimized)
+cargo test --test docker_integration_tests_optimized -- --test-threads=1
 ```
 
 ### 2. Test Docker Build
@@ -196,7 +214,9 @@ Brief description of changes
 - Added integration tests
 
 ## Testing
-- [ ] All tests pass locally
+- [ ] All 174 tests pass locally (`cargo test && npm test`)
+- [ ] TypeScript compiles without errors (`npm run type-check`)
+- [ ] No clippy warnings (`cargo clippy -- -D warnings`)
 - [ ] Docker build succeeds
 - [ ] Manual testing completed
 
@@ -343,7 +363,9 @@ git push origin v0.1.3
 
 - Run `cargo fmt` before committing
 - Fix all `cargo clippy` warnings
-- Add tests for new functionality
+- Ensure TypeScript compiles without errors (`npm run type-check`)
+- Add comprehensive tests for new functionality (both Rust and TypeScript)
+- Maintain 100% test success rate (174 total tests)
 - Ensure Docker builds succeed
 
 ### 4. Communication
@@ -371,6 +393,10 @@ docker build --no-cache -f docker/Dockerfile -t mcp-test:local .
 # Run tests with same settings as CI
 cargo test -- --test-threads=1
 RUST_LOG=debug cargo test
+
+# Run TypeScript tests in CI mode
+npm test -- --run
+npm run type-check
 ```
 
 ### Git Issues

@@ -12,14 +12,18 @@ fn add_security_headers() -> middleware::DefaultHeaders {
         .add((
             "Content-Security-Policy",
             "default-src 'self'; \
-             script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; \
+             script-src 'self' 'unsafe-inline' https://unpkg.com; \
              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
              font-src 'self' https://fonts.gstatic.com; \
              img-src 'self' data:; \
              connect-src 'self' ws: wss:; \
              frame-ancestors 'none'; \
              base-uri 'self'; \
-             form-action 'self';",
+             form-action 'self'; \
+             object-src 'none'; \
+             media-src 'self'; \
+             worker-src 'self'; \
+             manifest-src 'self';",
         ))
         .add(("X-Content-Type-Options", "nosniff"))
         .add(("X-Frame-Options", "DENY"))

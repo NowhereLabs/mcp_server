@@ -254,8 +254,12 @@ async fn test_missing_directories_handling() {
     // Wait for watcher to shut down gracefully
     let result = tokio::time::timeout(Duration::from_secs(5), watcher_handle).await;
 
-    // Restore original directory
-    std::env::set_current_dir(original_dir).expect("Failed to restore directory");
+    // Restore original directory before dropping temp_dir
+    // Use let _ = to ignore potential errors during test cleanup
+    let _ = std::env::set_current_dir(&original_dir);
+
+    // Now we can safely drop temp_dir
+    drop(temp_dir);
 
     assert!(
         result.is_ok(),

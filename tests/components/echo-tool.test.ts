@@ -2,14 +2,70 @@
  * Tests for Echo Tool Alpine.js Component
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { echoTool } from '@components/echo-tool.js';
+import { echoTool, type ToolExecutor } from '@components/echo-tool';
+
+// Types for testing
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  sanitized: string;
+}
+
+interface ExecutionResult {
+  success: boolean;
+  result?: any;
+  duration?: number;
+  error?: string;
+}
+
+interface ExecutionHistory {
+  timestamp: string;
+  input: any;
+  output: any;
+  success: boolean;
+  duration: number;
+}
+
+interface MockExecutor extends ToolExecutor {
+  execute: ReturnType<typeof vi.fn<[Record<string, any>], Promise<any>>>;
+  clearHistory: ReturnType<typeof vi.fn<[], void>>;
+  getSuccessRate: ReturnType<typeof vi.fn<[], number>>;
+  getAverageExecutionTime: ReturnType<typeof vi.fn<[], number>>;
+}
+
+interface TestEchoToolComponent {
+  message: string;
+  result: string | null;
+  executionTime: string | null;
+  errors: Record<string, string>;
+  executor: MockExecutor | null;
+  loading: boolean;
+  executionHistory: ExecutionHistory[];
+  validateAndSanitizeInput: (input: any) => ValidationResult;
+  execute: () => Promise<void>;
+  clearHistory: () => void;
+  getSuccessRate: () => number;
+  getAverageExecutionTime: () => number;
+}
+
+interface MockAlpineStore {
+  add: ReturnType<typeof vi.fn>;
+}
+
+interface MockAlpine {
+  store: ReturnType<typeof vi.fn>;
+}
+
+declare global {
+  var Alpine: any;
+}
 
 describe('Echo Tool Component', () => {
-  let component;
+  let component: TestEchoToolComponent;
 
   beforeEach(() => {
     // Create a fresh component instance
-    component = echoTool();
+    component = echoTool() as TestEchoToolComponent;
     
     // Mock the tool executor
     component.executor = {
@@ -20,7 +76,7 @@ describe('Echo Tool Component', () => {
       getSuccessRate: vi.fn().mockReturnValue(0.95),
       getAverageExecutionTime: vi.fn().mockReturnValue(150),
       lastResult: null
-    };
+    } as MockExecutor;
   });
 
   describe('Initialization', () => {
@@ -88,16 +144,16 @@ describe('Echo Tool Component', () => {
   describe('Execute Method', () => {
     it('should execute with valid input', async () => {
       component.message = 'Test message';
-      component.executor.execute.mockResolvedValue({
+      component.executor!.execute.mockResolvedValue({
         success: true,
         result: { echo: 'Test message' },
         duration: 100
       });
-      component.executor.lastResult = { duration: 100 };
+      component.executor!.lastResult = { duration: 100 };
 
       await component.execute();
 
-      expect(component.executor.execute).toHaveBeenCalledWith({ 
+      expect(component.executor!.execute).toHaveBeenCalledWith({ 
         message: 'Test message' 
       });
       expect(component.result).toBe('{\n  "echo": "Test message"\n}');
@@ -109,13 +165,13 @@ describe('Echo Tool Component', () => {
       
       await component.execute();
 
-      expect(component.executor.execute).not.toHaveBeenCalled();
+      expect(component.executor!.execute).not.toHaveBeenCalled();
       expect(component.errors.message).toBeDefined();
     });
 
     it('should handle execution failure', async () => {
       component.message = 'Test message';
-      component.executor.execute.mockResolvedValue({
+      component.executor!.execute.mockResolvedValue({
         success: false,
         error: 'Execution failed'
       });
@@ -135,7 +191,7 @@ describe('Echo Tool Component', () => {
 
     it('should handle execution exceptions', async () => {
       component.message = 'Test message';
-      component.executor.execute.mockRejectedValue(new Error('Network error'));
+      component.executor!.execute.mockRejectedValue(new Error('Network error'));
 
       await component.execute();
 
@@ -148,25 +204,25 @@ describe('Echo Tool Component', () => {
     it('should clear history', () => {
       component.clearHistory();
       
-      expect(component.executor.clearHistory).toHaveBeenCalled();
+      expect(component.executor!.clearHistory).toHaveBeenCalled();
     });
 
     it('should get success rate', () => {
       const rate = component.getSuccessRate();
       
       expect(rate).toBe(0.95);
-      expect(component.executor.getSuccessRate).toHaveBeenCalled();
+      expect(component.executor!.getSuccessRate).toHaveBeenCalled();
     });
 
     it('should get average execution time', () => {
       const time = component.getAverageExecutionTime();
       
       expect(time).toBe(150);
-      expect(component.executor.getAverageExecutionTime).toHaveBeenCalled();
+      expect(component.executor!.getAverageExecutionTime).toHaveBeenCalled();
     });
 
     it('should handle errors in utility methods gracefully', () => {
-      component.executor.getSuccessRate.mockImplementation(() => {
+      component.executor!.getSuccessRate.mockImplementation(() => {
         throw new Error('Test error');
       });
 
@@ -180,7 +236,7 @@ describe('Echo Tool Component', () => {
     it('should reflect executor loading state', () => {
       expect(component.loading).toBe(false);
       
-      component.executor.loading = true;
+      component.executor!.loading = true;
       expect(component.loading).toBe(true);
     });
 

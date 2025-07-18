@@ -1,6 +1,6 @@
 [package]
 name = "rust-mcp-server"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["NowhereLabs"]
 description = "High-performance Rust MCP server with real-time web dashboard"

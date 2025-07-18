@@ -8,6 +8,14 @@ import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export default defineConfig({
+  // Add esbuild options for TypeScript transformation
+  esbuild: {
+    target: 'es2020',
+    loader: 'ts',
+    include: /\.(ts|js)$/,
+    exclude: /node_modules/,
+  },
+  
   test: {
     // Use jsdom environment for browser-like testing
     environment: 'jsdom',
@@ -16,10 +24,10 @@ export default defineConfig({
     globals: true,
     
     // Setup file for Alpine.js initialization
-    setupFiles: ['./tests/setup.js'],
+    setupFiles: ['./tests/setup.ts'],
     
-    // Test file patterns
-    include: ['tests/**/*.test.js', 'tests/**/*.spec.js'],
+    // Test file patterns - support both JS and TS
+    include: ['tests/**/*.test.{js,ts}', 'tests/**/*.spec.{js,ts}'],
     
     // Coverage configuration
     coverage: {
@@ -28,13 +36,13 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         'tests/',
-        '**/*.config.js',
+        '**/*.config.{js,ts}',
         'static/js/dashboard.min.js',
-        'build.js'
+        'build.{js,ts}'
       ],
       include: [
-        'static/js/components/**/*.js',
-        'static/js/utils/**/*.js'
+        'static/js/components/**/*.{js,ts}',
+        'static/js/utils/**/*.{js,ts}'
       ]
     },
     

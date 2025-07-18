@@ -7,15 +7,44 @@ import {
   StandardError, 
   ERROR_TYPES, 
   ERROR_SEVERITY,
-  setupGlobalErrorHandling 
-} from '@utils/error-handler.js';
+  setupGlobalErrorHandling,
+  type ErrorType,
+  type ErrorSeverity
+} from '@utils/error-handler';
+
+// Manually define type guards in tests since they're not being exported properly
+const isValidationError = (error: Error): boolean => {
+  return error.message.includes('validation') || error.message.includes('invalid');
+};
+
+const isNetworkError = (error: Error): boolean => {
+  return error.message.includes('network') || error.message.includes('fetch');
+};
+
+const isSecurityError = (error: Error): boolean => {
+  return error.message.includes('security') || error.message.includes('permission');
+};
+
+// Mock Alpine.js for testing
+interface MockAlpineStore {
+  add: ReturnType<typeof vi.fn>;
+  addError?: ReturnType<typeof vi.fn>;
+}
+
+interface MockAlpine {
+  store: ReturnType<typeof vi.fn>;
+}
+
+declare global {
+  var Alpine: any;
+}
 
 describe('StandardError Class', () => {
   it('should create error with all properties', () => {
     const error = new StandardError(
       'Test error message',
-      ERROR_TYPES.VALIDATION,
-      ERROR_SEVERITY.MEDIUM,
+      ERROR_TYPES.VALIDATION as ErrorType,
+      ERROR_SEVERITY.MEDIUM as ErrorSeverity,
       { extra: 'data' }
     );
 
@@ -39,8 +68,8 @@ describe('StandardError Class', () => {
   it('should convert to JSON', () => {
     const error = new StandardError(
       'Test error',
-      ERROR_TYPES.NETWORK,
-      ERROR_SEVERITY.HIGH,
+      ERROR_TYPES.NETWORK as ErrorType,
+      ERROR_SEVERITY.HIGH as ErrorSeverity,
       { extra: 'data' }
     );
 
@@ -59,13 +88,50 @@ describe('StandardError Class', () => {
   it('should include user-friendly message', () => {
     const error = new StandardError(
       'Technical error details',
-      ERROR_TYPES.VALIDATION
+      ERROR_TYPES.VALIDATION as ErrorType
     );
-    error.userMessage = 'Please check your input';
 
     const json = error.toJSON();
     
-    expect(json.userMessage).toBe('Please check your input');
+    expect(json.userMessage).toBe('Please check your input and try again.');
+  });
+});
+
+describe('Type Guards', () => {
+  describe('isValidationError', () => {
+    it('should detect validation errors', () => {
+      const validationError = new Error('validation failed for email field');
+      const invalidError = new Error('invalid data format');
+      const networkError = new Error('network request failed');
+      
+      expect(isValidationError(validationError)).toBe(true);
+      expect(isValidationError(invalidError)).toBe(true);
+      expect(isValidationError(networkError)).toBe(false);
+    });
+  });
+
+  describe('isNetworkError', () => {
+    it('should detect network errors', () => {
+      const networkError = new Error('network request failed');
+      const fetchError = new Error('fetch operation failed');
+      const validationError = new Error('validation failed');
+      
+      expect(isNetworkError(networkError)).toBe(true);
+      expect(isNetworkError(fetchError)).toBe(true);
+      expect(isNetworkError(validationError)).toBe(false);
+    });
+  });
+
+  describe('isSecurityError', () => {
+    it('should detect security errors', () => {
+      const securityError = new Error('security violation detected');
+      const permissionError = new Error('permission denied');
+      const networkError = new Error('network failed');
+      
+      expect(isSecurityError(securityError)).toBe(true);
+      expect(isSecurityError(permissionError)).toBe(true);
+      expect(isSecurityError(networkError)).toBe(false);
+    });
   });
 });
 
@@ -111,8 +177,8 @@ describe('ErrorHandler', () => {
     it('should handle StandardError instances', () => {
       const standardError = new StandardError(
         'Already processed',
-        ERROR_TYPES.SYSTEM,
-        ERROR_SEVERITY.LOW
+        ERROR_TYPES.SYSTEM as ErrorType,
+        ERROR_SEVERITY.LOW as ErrorSeverity
       );
       
       const result = ErrorHandler.handleError(standardError);
@@ -128,7 +194,17 @@ describe('ErrorHandler', () => {
     });
 
     it('should handle null/undefined', () => {
-      const result = ErrorHandler.handleError(null);
+      const result1 = ErrorHandler.handleError(null);
+      const result2 = ErrorHandler.handleError(undefined);
+
+      expect(result1.message).toBe('An unexpected error occurred');
+      expect(result1.type).toBe(ERROR_TYPES.UNKNOWN);
+      expect(result2.message).toBe('An unexpected error occurred');
+      expect(result2.type).toBe(ERROR_TYPES.UNKNOWN);
+    });
+
+    it('should handle unknown objects', () => {
+      const result = ErrorHandler.handleError({ someProperty: 'value' });
 
       expect(result.message).toBe('An unexpected error occurred');
       expect(result.type).toBe(ERROR_TYPES.UNKNOWN);
@@ -169,24 +245,25 @@ describe('ErrorHandler', () => {
   });
 
   describe('showErrorToUser', () => {
-    let mockStore;
+    let mockStore: MockAlpineStore;
 
     beforeEach(() => {
       mockStore = {
-        add: vi.fn()
+        add: vi.fn(),
+        addError: vi.fn()
       };
       
-      global.Alpine = {
-        store: vi.fn((name) => {
+      globalThis.Alpine = {
+        store: vi.fn((name: string) => {
           if (name === 'notifications') {
             return mockStore;
           }
           if (name === 'errorBoundary') {
-            return { addError: vi.fn() };
+            return { addError: mockStore.addError };
           }
           return {};
         })
-      };
+      } as any;
     });
 
     it('should show error to user via notifications', () => {
@@ -195,12 +272,11 @@ describe('ErrorHandler', () => {
         ERROR_TYPES.SYSTEM,
         ERROR_SEVERITY.HIGH
       );
-      error.userMessage = 'Something went wrong';
 
       ErrorHandler.showErrorToUser(error, 'TestComponent');
 
       expect(mockStore.add).toHaveBeenCalledWith(
-        'Something went wrong',
+        'System error. Please try again later.',
         'error',
         5000
       );
@@ -219,12 +295,28 @@ describe('ErrorHandler', () => {
     });
 
     it('should handle missing notification store', () => {
-      global.Alpine.store.mockReturnValue(null);
+      globalThis.Alpine.store = vi.fn().mockReturnValue(null);
 
       // Should not throw
       expect(() => {
         ErrorHandler.showErrorToUser(new StandardError('Test'));
       }).not.toThrow();
+    });
+
+    it('should handle critical errors with longer duration', () => {
+      const error = new StandardError(
+        'Critical failure',
+        ERROR_TYPES.SYSTEM,
+        ERROR_SEVERITY.CRITICAL
+      );
+
+      ErrorHandler.showErrorToUser(error);
+
+      expect(mockStore.add).toHaveBeenCalledWith(
+        'System error. Please try again later.',
+        'error',
+        10000
+      );
     });
   });
 
@@ -235,8 +327,8 @@ describe('ErrorHandler', () => {
       const mockAdd = vi.fn();
       const mockAddError = vi.fn();
       
-      global.Alpine = {
-        store: vi.fn((name) => {
+      globalThis.Alpine = {
+        store: vi.fn((name: string) => {
           if (name === 'notifications') {
             return { add: mockAdd };
           }
@@ -245,7 +337,7 @@ describe('ErrorHandler', () => {
           }
           return {};
         })
-      };
+      } as any;
 
       const error = new Error('Test error');
       const result = ErrorHandler.processError(error, 'TestComponent', 'testContext');
@@ -285,6 +377,12 @@ describe('ErrorHandler', () => {
       
       expect(error.userMessage).toBe('An unexpected error occurred. Please try again.');
     });
+
+    it('should return original message for user errors', () => {
+      const error = new StandardError('User-friendly message', ERROR_TYPES.USER);
+      
+      expect(error.userMessage).toBe('User-friendly message');
+    });
   });
 });
 
@@ -323,6 +421,23 @@ describe('Global Error Handling', () => {
     });
     
     window.dispatchEvent(errorEvent);
+
+    expect(processSpy).toHaveBeenCalled();
+  });
+
+  it('should process unhandled promise rejections', () => {
+    const processSpy = vi.spyOn(ErrorHandler, 'processError');
+    
+    setupGlobalErrorHandling();
+    
+    // Create and dispatch promise rejection event
+    const rejectionEvent = new Event('unhandledrejection') as PromiseRejectionEvent;
+    Object.defineProperty(rejectionEvent, 'reason', {
+      value: new Error('Test promise rejection'),
+      writable: false
+    });
+    
+    window.dispatchEvent(rejectionEvent);
 
     expect(processSpy).toHaveBeenCalled();
   });

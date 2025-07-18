@@ -15,6 +15,39 @@ export function errorBoundary() {
             this.setupErrorHandling();
         },
         
+        /**
+         * Sanitize stack traces for production environments
+         */
+        sanitizeStackTrace(stack) {
+            if (!stack) return undefined;
+            
+            // In production, sanitize stack traces to prevent information leakage
+            if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') {
+                // Remove file paths and only keep function/error names
+                return stack
+                    .split('\n')
+                    .map(line => {
+                        // Keep the error message line
+                        if (!line.trim().startsWith('at ')) {
+                            return line;
+                        }
+                        
+                        // For stack frames, remove file paths and line numbers
+                        const match = line.match(/at\s+([^(]+)/);
+                        if (match) {
+                            return `    at ${match[1].trim()}`;
+                        }
+                        
+                        return '    at <sanitized>';
+                    })
+                    .slice(0, 5) // Limit to first 5 frames
+                    .join('\n');
+            }
+            
+            // In development, return full stack trace
+            return stack;
+        },
+        
         setupErrorHandling() {
             // Wrap all component methods with error handling
             this.wrapComponentMethods();
@@ -58,7 +91,7 @@ export function errorBoundary() {
         handleError(error, methodName, args) {
             this.hasError = true;
             this.errorMessage = error.message || 'An unexpected error occurred';
-            this.errorStack = error.stack;
+            this.errorStack = this.sanitizeStackTrace(error.stack);
             this.errorInfo = {
                 method: methodName,
                 arguments: args,
@@ -191,7 +224,7 @@ document.addEventListener('alpine:init', () => {
                 component: component || 'unknown',
                 method: method || 'unknown',
                 timestamp: new Date().toISOString(),
-                stack: error.stack
+                stack: this.sanitizeStackTrace(error.stack)
             };
             
             this.errors.unshift(errorEntry);

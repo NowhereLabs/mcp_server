@@ -2,12 +2,47 @@
  * Tests for Event Stream Alpine.js Component
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { eventStream } from '@components/event-stream.js';
+import { eventStream } from '@components/event-stream';
+
+// Types for testing
+interface EventData {
+  id?: string | number;
+  type: string;
+  name?: string;
+  message?: string;
+  uri?: string;
+  timestamp?: string;
+  [key: string]: any;
+}
+
+interface SSEEvent {
+  detail: {
+    data: string;
+  };
+}
+
+interface MockEventStreamStore {
+  events: EventData[];
+  addEvent: ReturnType<typeof vi.fn>;
+  clear: ReturnType<typeof vi.fn>;
+}
+
+interface MockErrorBoundaryStore {
+  addError: ReturnType<typeof vi.fn>;
+}
+
+interface MockAlpine {
+  store: ReturnType<typeof vi.fn>;
+}
+
+declare global {
+  var Alpine: any;
+}
 
 describe('Event Stream Component', () => {
-  let component;
-  let mockStore;
-  let mockErrorBoundary;
+  let component: any;
+  let mockStore: MockEventStreamStore;
+  let mockErrorBoundary: MockErrorBoundaryStore;
 
   beforeEach(() => {
     // Create mock stores
@@ -23,7 +58,7 @@ describe('Event Stream Component', () => {
 
     // Mock Alpine global
     global.Alpine = {
-      store: vi.fn((name) => {
+      store: vi.fn((name: string) => {
         if (name === 'eventStream') return mockStore;
         if (name === 'errorBoundary') return mockErrorBoundary;
         return undefined;
@@ -50,7 +85,7 @@ describe('Event Stream Component', () => {
 
   describe('SSE Message Handling', () => {
     it('should handle valid SSE message', () => {
-      const event = {
+      const event: SSEEvent = {
         detail: {
           data: JSON.stringify({
             type: 'tool_called',
@@ -72,7 +107,7 @@ describe('Event Stream Component', () => {
     });
 
     it('should handle invalid JSON in SSE message', () => {
-      const event = {
+      const event: SSEEvent = {
         detail: {
           data: 'invalid json'
         }
@@ -86,7 +121,7 @@ describe('Event Stream Component', () => {
 
   describe('Event Data Sanitization', () => {
     it('should sanitize valid event data', () => {
-      const data = {
+      const data: EventData = {
         type: 'info',
         name: 'test',
         message: 'Test message',
@@ -122,7 +157,7 @@ describe('Event Stream Component', () => {
     });
 
     it('should handle invalid timestamp', () => {
-      const data = {
+      const data: EventData = {
         type: 'info',
         timestamp: 'invalid-date'
       };
@@ -189,7 +224,7 @@ describe('Event Stream Component', () => {
 
   describe('Event Formatting', () => {
     it('should format event with all fields', () => {
-      const event = {
+      const event: EventData = {
         timestamp: '2024-01-01T12:00:00Z',
         type: 'tool_called',
         name: 'echo',
@@ -209,7 +244,7 @@ describe('Event Stream Component', () => {
     });
 
     it('should handle minimal event', () => {
-      const event = {
+      const event: EventData = {
         timestamp: '2024-01-01T12:00:00Z',
         type: 'info'
       };
@@ -266,7 +301,7 @@ describe('Event Stream Component', () => {
 });
 
 describe('Event Stream Store', () => {
-  let store;
+  let store: MockEventStreamStore;
 
   beforeEach(() => {
     // Reset document for store initialization
@@ -277,12 +312,12 @@ describe('Event Stream Store', () => {
     document.dispatchEvent(event);
     
     // Get the store
-    store = global.Alpine.store('eventStream');
+    store = global.Alpine.store('eventStream') as MockEventStreamStore;
   });
 
   describe('Add Event', () => {
     it('should add event with ID', () => {
-      const event = { type: 'info', message: 'Test' };
+      const event: EventData = { type: 'info', message: 'Test' };
       
       store.addEvent(event);
       
@@ -311,9 +346,9 @@ describe('Event Stream Store', () => {
     });
 
     it('should reject invalid events', () => {
-      store.addEvent(null);
-      store.addEvent('string');
-      store.addEvent(123);
+      store.addEvent(null as any);
+      store.addEvent('string' as any);
+      store.addEvent(123 as any);
       
       expect(store.events).toHaveLength(0);
     });
