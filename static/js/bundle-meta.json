@@ -1,7 +1,7 @@
 {
   "inputs": {
     "static/js/utils/error-handler.ts": {
-      "bytes": 12360,
+      "bytes": 19700,
       "imports": [
         {
           "path": "../types/alpine",
@@ -12,7 +12,7 @@
       "format": "esm"
     },
     "static/js/components/echo-tool.ts": {
-      "bytes": 8553,
+      "bytes": 8441,
       "imports": [
         {
           "path": "static/js/utils/error-handler.ts",
@@ -28,29 +28,39 @@
       "format": "esm"
     },
     "static/js/components/metrics-dashboard.ts": {
-      "bytes": 10003,
+      "bytes": 11685,
       "imports": [
         {
           "path": "../types/alpine",
           "kind": "import-statement",
           "external": true
+        },
+        {
+          "path": "static/js/utils/error-handler.ts",
+          "kind": "import-statement",
+          "original": "../utils/error-handler"
         }
       ],
       "format": "esm"
     },
     "static/js/components/event-stream.ts": {
-      "bytes": 8872,
+      "bytes": 8364,
       "imports": [
         {
           "path": "../types/alpine",
           "kind": "import-statement",
           "external": true
+        },
+        {
+          "path": "static/js/utils/error-handler.ts",
+          "kind": "import-statement",
+          "original": "../utils/error-handler"
         }
       ],
       "format": "esm"
     },
     "static/js/components/notification-system.ts": {
-      "bytes": 10905,
+      "bytes": 10793,
       "imports": [
         {
           "path": "static/js/utils/error-handler.ts",
@@ -66,23 +76,28 @@
       "format": "esm"
     },
     "static/js/components/tool-executor.ts": {
-      "bytes": 8948,
+      "bytes": 9392,
       "imports": [
         {
           "path": "../types/alpine",
           "kind": "import-statement",
           "external": true
+        },
+        {
+          "path": "static/js/utils/error-handler.ts",
+          "kind": "import-statement",
+          "original": "../utils/error-handler"
         }
       ],
       "format": "esm"
     },
-    "static/js/components/htmx-alpine-bridge.js": {
-      "bytes": 4922,
+    "static/js/components/htmx-alpine-bridge.ts": {
+      "bytes": 7391,
       "imports": [],
       "format": "esm"
     },
     "static/js/components/dashboard-controls.ts": {
-      "bytes": 8382,
+      "bytes": 9137,
       "imports": [
         {
           "path": "../types/alpine",
@@ -93,6 +108,11 @@
           "path": "static/js/components/event-stream.ts",
           "kind": "import-statement",
           "original": "./event-stream"
+        },
+        {
+          "path": "static/js/utils/error-handler.ts",
+          "kind": "import-statement",
+          "original": "../utils/error-handler"
         }
       ],
       "format": "esm"
@@ -131,7 +151,7 @@
           "original": "./components/tool-executor"
         },
         {
-          "path": "static/js/components/htmx-alpine-bridge.js",
+          "path": "static/js/components/htmx-alpine-bridge.ts",
           "kind": "import-statement",
           "original": "./components/htmx-alpine-bridge"
         },
@@ -149,7 +169,7 @@
       "imports": [],
       "exports": [],
       "inputs": {},
-      "bytes": 104526
+      "bytes": 119921
     },
     "static/js/dashboard.min.js": {
       "imports": [],
@@ -157,34 +177,34 @@
       "entryPoint": "static/js/alpine-components.ts",
       "inputs": {
         "static/js/utils/error-handler.ts": {
-          "bytesInOutput": 7389
+          "bytesInOutput": 13727
         },
         "static/js/components/echo-tool.ts": {
-          "bytesInOutput": 5473
+          "bytesInOutput": 5327
         },
         "static/js/components/metrics-dashboard.ts": {
-          "bytesInOutput": 3583
+          "bytesInOutput": 3965
         },
         "static/js/components/event-stream.ts": {
-          "bytesInOutput": 5436
+          "bytesInOutput": 5152
         },
         "static/js/components/notification-system.ts": {
-          "bytesInOutput": 6563
+          "bytesInOutput": 6417
         },
         "static/js/components/tool-executor.ts": {
-          "bytesInOutput": 5554
+          "bytesInOutput": 5478
         },
-        "static/js/components/htmx-alpine-bridge.js": {
-          "bytesInOutput": 3959
+        "static/js/components/htmx-alpine-bridge.ts": {
+          "bytesInOutput": 4354
         },
         "static/js/components/dashboard-controls.ts": {
-          "bytesInOutput": 5284
+          "bytesInOutput": 5620
         },
         "static/js/alpine-components.ts": {
           "bytesInOutput": 1027
         }
       },
-      "bytes": 44804
+      "bytes": 51603
     }
   }
 }

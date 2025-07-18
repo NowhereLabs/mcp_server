@@ -159,7 +159,7 @@ export const componentLoader = new ComponentLoader();
 export const performanceMonitor = new ComponentPerformanceMonitor();
 
 // Enhanced component with performance tracking
-interface OptimizedComponent {
+export interface OptimizedComponent {
     $componentName: string;
     $loadTime: number;
     destroy?(): void;
