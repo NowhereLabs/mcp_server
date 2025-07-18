@@ -95,7 +95,8 @@ interface MetricsStore {
  * Global Alpine.js store for managing system metrics data.
  * Provides methods to update metrics data and manage loading states.
  */
-document.addEventListener('alpine:init', () => {
+if (typeof document !== 'undefined') {
+    document.addEventListener('alpine:init', () => {
     if (typeof window !== 'undefined' && window.Alpine) {
         window.Alpine.store('metrics', {
             /** Current metrics data */
@@ -213,7 +214,8 @@ document.addEventListener('alpine:init', () => {
             }
         } as MetricsStore);
     }
-});
+    });
+}
 
 // Export type for testing and module usage
 export type MetricsStoreComponent = CustomAlpineComponent<MetricsStoreData>;

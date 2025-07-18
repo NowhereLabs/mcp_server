@@ -186,7 +186,8 @@ export function eventStream(): CustomAlpineComponent<EventStreamData> {
  * Global Alpine.js store for managing event stream data.
  * Provides methods to add events and manage the event history.
  */
-document.addEventListener('alpine:init', () => {
+if (typeof document !== 'undefined') {
+    document.addEventListener('alpine:init', () => {
     if (typeof window !== 'undefined' && window.Alpine) {
         window.Alpine.store('eventStream', {
             /** Array of event objects */
@@ -226,7 +227,8 @@ document.addEventListener('alpine:init', () => {
             }
         });
     }
-});
+    });
+}
 
 // Export component type for testing and module usage
 export type EventStreamComponent = CustomAlpineComponent<EventStreamData>;

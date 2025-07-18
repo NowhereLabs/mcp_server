@@ -10,7 +10,7 @@ import {
   setupGlobalErrorHandling,
   type ErrorType,
   type ErrorSeverity
-} from '@utils/error-handler';
+} from '../../static/js/utils/error-handler';
 
 // Manually define type guards in tests since they're not being exported properly
 const isValidationError = (error: Error): boolean => {

@@ -216,7 +216,8 @@ interface NotificationStore {
  * Global Alpine.js store for managing notification messages.
  * Provides methods to add, remove, and clear notifications.
  */
-document.addEventListener('alpine:init', () => {
+if (typeof document !== 'undefined') {
+    document.addEventListener('alpine:init', () => {
     if (typeof window !== 'undefined' && window.Alpine) {
         window.Alpine.store('notifications', {
             /** Array of active notification objects */
@@ -300,7 +301,8 @@ document.addEventListener('alpine:init', () => {
             }
         } as NotificationStore);
     }
-});
+    });
+}
 
 // Export type for testing and module usage
 export type NotificationSystemComponent = CustomAlpineComponent<NotificationSystemData>;
