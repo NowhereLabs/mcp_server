@@ -1,11 +1,68 @@
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 use actix_ws::Message;
 use futures_util::StreamExt;
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 
 use crate::shared::{
     config::Config,
     state::{AppState, SystemEvent},
 };
+
+/// Rate limiter for WebSocket connections
+#[derive(Clone)]
+pub struct WebSocketRateLimiter {
+    connections: Arc<RwLock<HashMap<IpAddr, Vec<Instant>>>>,
+    max_connections_per_ip: usize,
+    time_window: Duration,
+}
+
+impl WebSocketRateLimiter {
+    pub fn new() -> Self {
+        Self {
+            connections: Arc::new(RwLock::new(HashMap::new())),
+            max_connections_per_ip: 10, // Max 10 connections per IP
+            time_window: Duration::from_secs(60), // Per minute
+        }
+    }
+
+    /// Check if IP is allowed to connect
+    pub async fn check_rate_limit(&self, ip: IpAddr) -> bool {
+        let now = Instant::now();
+        let mut connections = self.connections.write().await;
+        
+        // Clean old entries
+        let entry = connections.entry(ip).or_insert_with(Vec::new);
+        entry.retain(|&timestamp| now.duration_since(timestamp) < self.time_window);
+        
+        // Check if under limit
+        if entry.len() >= self.max_connections_per_ip {
+            return false;
+        }
+        
+        // Add new connection
+        entry.push(now);
+        true
+    }
+
+    /// Clean up expired entries periodically
+    pub async fn cleanup(&self) {
+        let now = Instant::now();
+        let mut connections = self.connections.write().await;
+        
+        connections.retain(|_, timestamps| {
+            timestamps.retain(|&timestamp| now.duration_since(timestamp) < self.time_window);
+            !timestamps.is_empty()
+        });
+    }
+}
+
+lazy_static::lazy_static! {
+    static ref RATE_LIMITER: WebSocketRateLimiter = WebSocketRateLimiter::new();
+}
 
 /// Validate WebSocket origin header
 fn validate_websocket_origin(req: &HttpRequest, config: &Config) -> bool {
@@ -36,6 +93,26 @@ pub async fn websocket_handler(
     data: web::Data<AppState>,
     config: web::Data<Config>,
 ) -> Result<HttpResponse> {
+    // Extract client IP address
+    let client_ip = req
+        .connection_info()
+        .peer_addr()
+        .and_then(|addr| addr.parse::<std::net::SocketAddr>().ok())
+        .map(|addr| addr.ip())
+        .unwrap_or_else(|| std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)));
+
+    // Check rate limit
+    if !RATE_LIMITER.check_rate_limit(client_ip).await {
+        tracing::warn!(
+            "WebSocket connection rejected due to rate limit: IP {}",
+            client_ip
+        );
+        return Ok(HttpResponse::TooManyRequests().json(serde_json::json!({
+            "error": "Rate limit exceeded",
+            "message": "Too many WebSocket connections from this IP address"
+        })));
+    }
+
     // Validate origin before establishing WebSocket connection
     if !validate_websocket_origin(&req, &config) {
         tracing::warn!(

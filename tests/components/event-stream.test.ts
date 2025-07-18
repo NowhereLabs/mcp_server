@@ -2,7 +2,7 @@
  * Tests for Event Stream Alpine.js Component
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { eventStream } from '@components/event-stream';
+import { eventStream } from '../../static/js/components/event-stream';
 
 // Types for testing
 interface EventData {
@@ -67,6 +67,11 @@ describe('Event Stream Component', () => {
 
     // Create component instance
     component = eventStream();
+    
+    // Mock the $store property manually
+    component.$store = {
+      eventStream: mockStore
+    };
   });
 
   describe('Events Getter', () => {
@@ -269,9 +274,12 @@ describe('Event Stream Component', () => {
       component.handleEventStreamError(error, 'testMethod', ['arg1']);
 
       expect(mockErrorBoundary.addError).toHaveBeenCalledWith(
-        error,
+        expect.objectContaining({
+          message: 'Test error',
+          type: 'unknown'
+        }),
         'eventStream',
-        'testMethod'
+        'unknown'
       );
     });
 

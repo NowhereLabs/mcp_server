@@ -2,9 +2,9 @@
  * Tests for Notification System Alpine.js Component
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { notificationSystem } from '@components/notification-system';
+import { notificationSystem } from '../../static/js/components/notification-system';
 // Import the full file to ensure the store is registered
-import '@components/notification-system';
+import '../../static/js/components/notification-system';
 
 // Types for testing
 interface NotificationItem {

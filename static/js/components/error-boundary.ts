@@ -1,24 +1,83 @@
 // Error Boundary System for Alpine.js Components
+// TypeScript version with comprehensive error handling
+
+import type { 
+  ErrorInfo, 
+  ErrorEntry, 
+  ErrorStats, 
+  ErrorReport
+} from './error-boundary.d';
+
+// Enhanced interfaces for TypeScript implementation
+interface ErrorBoundaryComponent {
+  hasError: boolean;
+  errorMessage: string | null;
+  errorStack: string | null;
+  errorInfo: ErrorInfo | null;
+  
+  init(): void;
+  sanitizeStackTrace(stack: string | undefined): string | undefined;
+  setupErrorHandling(): void;
+  wrapComponentMethods(): void;
+  createErrorBoundaryWrapper<T extends any[], R>(
+    originalMethod: (...args: T) => R,
+    methodName: string
+  ): (...args: T) => R;
+  handleError(error: Error, methodName: string, args?: any[]): void;
+  getFallbackValue(methodName: string): any;
+  recoverFromError(): void;
+  setupGlobalErrorHandlers(): void;
+  retryOperation(methodName: string, ...args: any[]): void;
+}
+
+interface ErrorBoundaryStore {
+  errors: ErrorEntry[];
+  maxErrors: number;
+  
+  addError(error: Error, component?: string, method?: string): void;
+  sanitizeStackTrace(stack: string | undefined): string | undefined;
+  checkCriticalErrors(): void;
+  handleCriticalErrors(errorContext: any): void;
+  attemptRecovery(errorContext: any): void;
+  recoverComponent(componentName: string): void;
+  suggestPageRefresh(): void;
+  clearErrors(): void;
+  getErrorStats(): ErrorStats;
+  getMostCommonError(): Array<{ error: string; count: number }>;
+  generateErrorReport(): ErrorReport;
+  generateRecommendations(): Array<{ type: string; message: string; action: string }>;
+  exportErrorReport(): void;
+}
+
+// Extended Alpine.js interface for error boundary
+interface AlpineWithErrorBoundary extends AlpineComponent {
+  hasError?: boolean;
+  errorMessage?: string | null;
+  errorStack?: string | null;
+  errorInfo?: ErrorInfo | null;
+  handleError?: (error: Error, methodName: string, args?: any[]) => void;
+  recoverFromError?: () => void;
+  init?: () => void;
+}
 
 /**
  * Error boundary component that catches and handles component errors gracefully
- * @returns {Object} Alpine.js component with error boundary functionality
  */
-export function errorBoundary() {
+export function errorBoundary(): ErrorBoundaryComponent {
     return {
         hasError: false,
         errorMessage: null,
         errorStack: null,
         errorInfo: null,
         
-        init() {
+        init(): void {
             this.setupErrorHandling();
         },
         
         /**
          * Sanitize stack traces for production environments
          */
-        sanitizeStackTrace(stack) {
+        sanitizeStackTrace(stack: string | undefined): string | undefined {
             if (!stack) return undefined;
             
             // In production, sanitize stack traces to prevent information leakage
@@ -48,7 +107,7 @@ export function errorBoundary() {
             return stack;
         },
         
-        setupErrorHandling() {
+        setupErrorHandling(): void {
             // Wrap all component methods with error handling
             this.wrapComponentMethods();
             
@@ -56,47 +115,50 @@ export function errorBoundary() {
             this.setupGlobalErrorHandlers();
         },
         
-        wrapComponentMethods() {
-            const originalMethods = Object.getOwnPropertyNames(this.__proto__);
+        wrapComponentMethods(): void {
+            const originalMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(this));
             
             originalMethods.forEach(methodName => {
-                if (typeof this[methodName] === 'function' && methodName !== 'init') {
-                    const originalMethod = this[methodName];
-                    this[methodName] = this.createErrorBoundaryWrapper(originalMethod, methodName);
+                if (typeof (this as any)[methodName] === 'function' && methodName !== 'init') {
+                    const originalMethod = (this as any)[methodName];
+                    (this as any)[methodName] = this.createErrorBoundaryWrapper(originalMethod, methodName);
                 }
             });
         },
         
-        createErrorBoundaryWrapper(originalMethod, methodName) {
-            return (...args) => {
+        createErrorBoundaryWrapper<T extends any[], R>(
+            originalMethod: (...args: T) => R,
+            methodName: string
+        ): (...args: T) => R {
+            return (...args: T): R => {
                 try {
                     const result = originalMethod.apply(this, args);
                     
                     // Handle async methods
                     if (result instanceof Promise) {
-                        return result.catch(error => {
+                        return result.catch((error: Error) => {
                             this.handleError(error, methodName, args);
                             return this.getFallbackValue(methodName);
-                        });
+                        }) as R;
                     }
                     
                     return result;
                 } catch (error) {
-                    this.handleError(error, methodName, args);
+                    this.handleError(error as Error, methodName, args);
                     return this.getFallbackValue(methodName);
                 }
             };
         },
         
-        handleError(error, methodName, args) {
+        handleError(error: Error, methodName: string, args?: any[]): void {
             this.hasError = true;
             this.errorMessage = error.message || 'An unexpected error occurred';
-            this.errorStack = this.sanitizeStackTrace(error.stack);
+            this.errorStack = this.sanitizeStackTrace(error.stack) || null;
             this.errorInfo = {
                 method: methodName,
-                arguments: args,
+                arguments: args || [],
                 timestamp: new Date().toISOString(),
-                component: this.$el?.id || 'unknown'
+                component: (this as any).$el?.id || 'unknown'
             };
             
             // Log error for debugging
@@ -104,15 +166,24 @@ export function errorBoundary() {
                 error,
                 method: methodName,
                 args,
-                component: this.$el?.id
+                component: (this as any).$el?.id
             });
             
             // Notify error to user if notifications are available
-            if (Alpine.store('notifications')) {
-                Alpine.store('notifications').add(
-                    `Component error in ${methodName}: ${this.errorMessage}`,
-                    'error'
-                );
+            if (window.Alpine && window.Alpine.store) {
+                const notificationStore = window.Alpine.store('notifications');
+                if (notificationStore && typeof notificationStore.add === 'function') {
+                    notificationStore.add(
+                        `Component error in ${methodName}: ${this.errorMessage}`,
+                        'error'
+                    );
+                }
+            }
+            
+            // Add to global error boundary store
+            const errorBoundaryStore = window.Alpine?.store('errorBoundary') as ErrorBoundaryStore;
+            if (errorBoundaryStore && typeof errorBoundaryStore.addError === 'function') {
+                errorBoundaryStore.addError(error, (this as any).$el?.id || 'unknown', methodName);
             }
             
             // Trigger error recovery after a delay
@@ -121,7 +192,7 @@ export function errorBoundary() {
             }, 2000);
         },
         
-        getFallbackValue(methodName) {
+        getFallbackValue(methodName: string): any {
             // Provide safe fallback values based on method name
             if (methodName.includes('get') || methodName.includes('format')) {
                 return '';
@@ -135,7 +206,7 @@ export function errorBoundary() {
             return null;
         },
         
-        recoverFromError() {
+        recoverFromError(): void {
             // Attempt to recover from error
             this.hasError = false;
             this.errorMessage = null;
@@ -152,29 +223,30 @@ export function errorBoundary() {
             }
         },
         
-        setupGlobalErrorHandlers() {
+        setupGlobalErrorHandlers(): void {
             // Handle Alpine.js specific errors
-            document.addEventListener('alpine:error', (event) => {
-                this.handleError(event.detail.error, 'alpine:error', [event.detail]);
+            document.addEventListener('alpine:error', (event: Event) => {
+                const customEvent = event as CustomEvent;
+                this.handleError(customEvent.detail.error, 'alpine:error', [customEvent.detail]);
             });
             
             // Handle unhandled promise rejections
-            window.addEventListener('unhandledrejection', (event) => {
-                if (event.reason && event.reason.alpineComponent === this) {
+            window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+                if (event.reason && (event.reason as any).alpineComponent === this) {
                     this.handleError(event.reason, 'unhandledrejection', [event]);
                     event.preventDefault();
                 }
             });
         },
         
-        retryOperation(methodName, ...args) {
+        retryOperation(methodName: string, ...args: any[]): void {
             if (this.hasError) {
                 this.recoverFromError();
             }
             
             setTimeout(() => {
-                if (this[methodName] && typeof this[methodName] === 'function') {
-                    this[methodName](...args);
+                if ((this as any)[methodName] && typeof (this as any)[methodName] === 'function') {
+                    (this as any)[methodName](...args);
                 }
             }, 100);
         }
@@ -183,26 +255,24 @@ export function errorBoundary() {
 
 /**
  * Mixin to add error boundary functionality to existing components
- * @param {Object} component - Alpine.js component to enhance
- * @returns {Object} Enhanced component with error boundaries
  */
-export function withErrorBoundary(component) {
+export function withErrorBoundary<T extends object>(component: T): T & ErrorBoundaryComponent {
     const errorBoundaryMixin = errorBoundary();
     
     return {
         ...component,
         ...errorBoundaryMixin,
         
-        init() {
+        init(): void {
             // Initialize error boundary first
             errorBoundaryMixin.init.call(this);
             
             // Then initialize the original component
-            if (component.init) {
+            if ((component as any).init) {
                 try {
-                    component.init.call(this);
+                    (component as any).init.call(this);
                 } catch (error) {
-                    this.handleError(error, 'init', []);
+                    this.handleError(error as Error, 'init', []);
                 }
             }
         }
@@ -213,18 +283,20 @@ export function withErrorBoundary(component) {
  * Global error boundary store for cross-component error handling
  */
 document.addEventListener('alpine:init', () => {
-    Alpine.store('errorBoundary', {
+    if (!window.Alpine) return;
+    
+    const errorBoundaryStore: ErrorBoundaryStore = {
         errors: [],
         maxErrors: 10,
         
-        addError(error, component, method) {
-            const errorEntry = {
+        addError(error: Error, component?: string, method?: string): void {
+            const errorEntry: ErrorEntry = {
                 id: Date.now() + Math.random(),
                 error: error.message,
                 component: component || 'unknown',
                 method: method || 'unknown',
                 timestamp: new Date().toISOString(),
-                stack: this.sanitizeStackTrace(error.stack)
+                stack: this.sanitizeStackTrace(error.stack) || ''
             };
             
             this.errors.unshift(errorEntry);
@@ -238,7 +310,33 @@ document.addEventListener('alpine:init', () => {
             this.checkCriticalErrors();
         },
         
-        checkCriticalErrors() {
+        sanitizeStackTrace(stack: string | undefined): string | undefined {
+            if (!stack) return undefined;
+            
+            // In production, sanitize stack traces to prevent information leakage
+            if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') {
+                return stack
+                    .split('\n')
+                    .map(line => {
+                        if (!line.trim().startsWith('at ')) {
+                            return line;
+                        }
+                        
+                        const match = line.match(/at\s+([^(]+)/);
+                        if (match) {
+                            return `    at ${match[1].trim()}`;
+                        }
+                        
+                        return '    at <sanitized>';
+                    })
+                    .slice(0, 5)
+                    .join('\n');
+            }
+            
+            return stack;
+        },
+        
+        checkCriticalErrors(): void {
             const recentErrors = this.errors.slice(0, 5);
             const criticalPatterns = [
                 'Network error',
@@ -271,7 +369,7 @@ document.addEventListener('alpine:init', () => {
             const hasFrequentErrors = recentFrequentErrors.length > 3;
             
             // Check for component-specific error storms
-            const componentErrorCounts = {};
+            const componentErrorCounts: Record<string, number> = {};
             recentErrors.forEach(error => {
                 componentErrorCounts[error.component] = (componentErrorCounts[error.component] || 0) + 1;
             });
@@ -288,7 +386,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
         
-        handleCriticalErrors(errorContext) {
+        handleCriticalErrors(errorContext: any): void {
             const {
                 hasCriticalErrors,
                 hasFrequentErrors,
@@ -308,7 +406,7 @@ document.addEventListener('alpine:init', () => {
                 recoveryAction = 'The system will attempt automatic recovery.';
             } else if (hasComponentErrorStorm) {
                 const problematicComponents = Object.entries(errorCounts)
-                    .filter(([, count]) => count > 2)
+                    .filter(([, count]) => typeof count === 'number' && count > 2)
                     .map(([component]) => component)
                     .join(', ');
                 errorMessage = `Component errors detected: ${problematicComponents}`;
@@ -316,12 +414,15 @@ document.addEventListener('alpine:init', () => {
             }
             
             // Show critical error notification
-            if (Alpine.store('notifications')) {
-                Alpine.store('notifications').add(
-                    `${errorMessage} ${recoveryAction}`,
-                    'error',
-                    15000
-                );
+            if (window.Alpine && window.Alpine.store) {
+                const notificationStore = window.Alpine.store('notifications');
+                if (notificationStore && typeof notificationStore.add === 'function') {
+                    notificationStore.add(
+                        `${errorMessage} ${recoveryAction}`,
+                        'error',
+                        15000
+                    );
+                }
             }
             
             // Log critical errors for monitoring
@@ -335,13 +436,13 @@ document.addEventListener('alpine:init', () => {
             this.attemptRecovery(errorContext);
         },
         
-        attemptRecovery(errorContext) {
+        attemptRecovery(errorContext: any): void {
             const { hasComponentErrorStorm, errorCounts } = errorContext;
             
             // If it's a component error storm, try to recover specific components
             if (hasComponentErrorStorm) {
                 Object.entries(errorCounts).forEach(([component, count]) => {
-                    if (count > 2) {
+                    if (typeof count === 'number' && count > 2) {
                         this.recoverComponent(component);
                     }
                 });
@@ -359,14 +460,15 @@ document.addEventListener('alpine:init', () => {
             }, 30000); // Check again in 30 seconds
         },
         
-        recoverComponent(componentName) {
+        recoverComponent(componentName: string): void {
             try {
                 // Find and reinitialize the component
                 const componentElements = document.querySelectorAll(`[x-data*="${componentName}"]`);
                 
                 componentElements.forEach(element => {
-                    if (element._x_dataStack && element._x_dataStack.length > 0) {
-                        const componentData = element._x_dataStack[0];
+                    const alpineElement = element as any;
+                    if (alpineElement._x_dataStack && alpineElement._x_dataStack.length > 0) {
+                        const componentData = alpineElement._x_dataStack[0] as AlpineWithErrorBoundary;
                         
                         // If component has a recovery method, call it
                         if (componentData.recoverFromError) {
@@ -384,21 +486,24 @@ document.addEventListener('alpine:init', () => {
             }
         },
         
-        suggestPageRefresh() {
-            if (Alpine.store('notifications')) {
-                Alpine.store('notifications').add(
-                    'System errors persist. Consider refreshing the page to restore full functionality.',
-                    'warning',
-                    0 // No auto-dismiss
-                );
+        suggestPageRefresh(): void {
+            if (window.Alpine && window.Alpine.store) {
+                const notificationStore = window.Alpine.store('notifications');
+                if (notificationStore && typeof notificationStore.add === 'function') {
+                    notificationStore.add(
+                        'System errors persist. Consider refreshing the page to restore full functionality.',
+                        'warning',
+                        0 // No auto-dismiss
+                    );
+                }
             }
         },
         
-        clearErrors() {
+        clearErrors(): void {
             this.errors = [];
         },
         
-        getErrorStats() {
+        getErrorStats(): ErrorStats {
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
             
@@ -414,8 +519,8 @@ document.addEventListener('alpine:init', () => {
             };
         },
         
-        getMostCommonError() {
-            const errorCounts = {};
+        getMostCommonError(): Array<{ error: string; count: number }> {
+            const errorCounts: Record<string, number> = {};
             
             this.errors.forEach(error => {
                 errorCounts[error.error] = (errorCounts[error.error] || 0) + 1;
@@ -427,9 +532,9 @@ document.addEventListener('alpine:init', () => {
                 .map(([error, count]) => ({ error, count }));
         },
         
-        generateErrorReport() {
+        generateErrorReport(): ErrorReport {
             const stats = this.getErrorStats();
-            const report = {
+            const report: ErrorReport = {
                 timestamp: new Date().toISOString(),
                 summary: {
                     totalErrors: stats.total,
@@ -451,8 +556,8 @@ document.addEventListener('alpine:init', () => {
             return report;
         },
         
-        generateRecommendations() {
-            const recommendations = [];
+        generateRecommendations(): Array<{ type: string; message: string; action: string }> {
+            const recommendations: Array<{ type: string; message: string; action: string }> = [];
             const stats = this.getErrorStats();
             
             // High error rate
@@ -476,7 +581,7 @@ document.addEventListener('alpine:init', () => {
             // Specific error patterns
             const commonErrors = stats.mostCommon;
             commonErrors.forEach(({ error, count }) => {
-                if (count > 2) {
+                if (typeof count === 'number' && count > 2) {
                     if (error.toLowerCase().includes('network')) {
                         recommendations.push({
                             type: 'network_issue',
@@ -496,7 +601,7 @@ document.addEventListener('alpine:init', () => {
             return recommendations;
         },
         
-        exportErrorReport() {
+        exportErrorReport(): void {
             const report = this.generateErrorReport();
             const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -508,5 +613,7 @@ document.addEventListener('alpine:init', () => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
-    });
+    };
+    
+    window.Alpine.store('errorBoundary', errorBoundaryStore);
 });

@@ -351,8 +351,13 @@ export class ErrorHandler {
         } else if (typeof error === 'string') {
             message = error;
         } else if (error !== null && error !== undefined) {
-            // Handle other types of errors
-            message = String(error);
+            // Handle other types of errors (objects, arrays, etc.)
+            if (typeof error === 'object') {
+                message = 'An unexpected error occurred';
+                details.originalError = error.toString();
+            } else {
+                message = String(error);
+            }
         }
 
         return new StandardError(message, type, severity, details);

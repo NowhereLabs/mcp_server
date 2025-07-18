@@ -2,7 +2,7 @@
  * Tests for Echo Tool Alpine.js Component
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { echoTool, type ToolExecutor } from '@components/echo-tool';
+import { echoTool, type ToolExecutor } from '../../static/js/components/echo-tool';
 
 // Types for testing
 interface ValidationResult {
@@ -178,8 +178,15 @@ describe('Echo Tool Component', () => {
 
       // Mock Alpine store
       global.Alpine = {
-        store: vi.fn().mockReturnValue({
-          add: vi.fn()
+        store: vi.fn().mockImplementation((storeName: string) => {
+          if (storeName === 'errorBoundary') {
+            return {
+              addError: vi.fn()
+            };
+          }
+          return {
+            add: vi.fn()
+          };
         })
       };
 

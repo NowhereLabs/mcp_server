@@ -1,32 +1,59 @@
 // Component Loader for Alpine.js - Enables lazy loading and code splitting
-export class ComponentLoader {
+// TypeScript version with proper generic types
+
+export interface ComponentLoaderStats {
+    registered: number;
+    loaded: number;
+    loading: number;
+    loadedComponents: string[];
+}
+
+export interface ComponentPerformanceReport {
+    loadTimes: Record<string, number>;
+    renderTimes: Record<string, number>;
+    averageLoadTime: number;
+    averageRenderTime: number;
+}
+
+// Generic component loader with type safety
+export class ComponentLoader<T = any> {
+    private loadedComponents: Set<string>;
+    private componentRegistry: Map<string, () => Promise<T>>;
+    private loadingPromises: Map<string, Promise<T>>;
+
     constructor() {
         this.loadedComponents = new Set();
         this.componentRegistry = new Map();
         this.loadingPromises = new Map();
     }
-    
+
     // Register a component for lazy loading
-    register(name, loader) {
+    register(name: string, loader: () => Promise<T>): void {
         this.componentRegistry.set(name, loader);
     }
-    
+
     // Load a component on demand
-    async load(name) {
+    async load(name: string): Promise<T> {
         if (this.loadedComponents.has(name)) {
-            return this.componentRegistry.get(name);
+            const loader = this.componentRegistry.get(name);
+            if (loader) {
+                return loader();
+            }
         }
-        
+
         if (this.loadingPromises.has(name)) {
-            return this.loadingPromises.get(name);
+            const promise = this.loadingPromises.get(name);
+            if (promise) {
+                return promise;
+            }
         }
-        
+
         const loader = this.componentRegistry.get(name);
         if (!loader) {
             throw new Error(`Component "${name}" not registered`);
         }
-        
-        const loadPromise = (async () => {
+
+        const loadPromise = (async (): Promise<T> => {
             try {
                 const component = await loader();
                 this.loadedComponents.add(name);
@@ -38,19 +65,19 @@ export class ComponentLoader {
                 this.loadingPromises.delete(name);
             }
         })();
-        
+
         this.loadingPromises.set(name, loadPromise);
         return loadPromise;
     }
-    
+
     // Pre-load critical components
-    async preload(componentNames) {
+    async preload(componentNames: string[]): Promise<void> {
         const promises = componentNames.map(name => this.load(name));
         await Promise.all(promises);
     }
-    
+
     // Get loading statistics
-    getStats() {
+    getStats(): ComponentLoaderStats {
         return {
             registered: this.componentRegistry.size,
             loaded: this.loadedComponents.size,
@@ -60,22 +87,23 @@ export class ComponentLoader {
     }
 }
 
-// Global component loader instance
-export const componentLoader = new ComponentLoader();
-
 // Performance monitoring for component loading
 export class ComponentPerformanceMonitor {
+    private loadTimes: Map<string, number>;
+    private renderTimes: Map<string, number>;
+    private memoryUsage: Map<string, number>;
+
     constructor() {
         this.loadTimes = new Map();
         this.renderTimes = new Map();
         this.memoryUsage = new Map();
     }
-    
-    startLoadTimer(componentName) {
+
+    startLoadTimer(componentName: string): void {
         this.loadTimes.set(componentName, performance.now());
     }
-    
-    endLoadTimer(componentName) {
+
+    endLoadTimer(componentName: string): number {
         const startTime = this.loadTimes.get(componentName);
         if (startTime) {
             const duration = performance.now() - startTime;
@@ -87,17 +115,17 @@ export class ComponentPerformanceMonitor {
         }
         return 0;
     }
-    
-    measureRenderTime(componentName, renderFn) {
+
+    measureRenderTime<T>(componentName: string, renderFn: () => T): T {
         const startTime = performance.now();
         const result = renderFn();
         const endTime = performance.now();
-        
+
         this.renderTimes.set(componentName, endTime - startTime);
         return result;
     }
-    
-    getPerformanceReport() {
+
+    getPerformanceReport(): ComponentPerformanceReport {
         return {
             loadTimes: Object.fromEntries(this.loadTimes),
             renderTimes: Object.fromEntries(this.renderTimes),
@@ -105,44 +133,66 @@ export class ComponentPerformanceMonitor {
             averageRenderTime: this.getAverageRenderTime(),
         };
     }
-    
-    getAverageLoadTime() {
+
+    getAverageLoadTime(): number {
         const times = Array.from(this.loadTimes.values());
         return times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
     }
-    
-    getAverageRenderTime() {
+
+    getAverageRenderTime(): number {
         const times = Array.from(this.renderTimes.values());
         return times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
     }
+
+    // Clean up performance data for a component
+    cleanup(componentName: string): void {
+        this.loadTimes.delete(componentName);
+        this.renderTimes.delete(componentName);
+        this.memoryUsage.delete(componentName);
+    }
 }
+
+// Global component loader instance
+export const componentLoader = new ComponentLoader();
 
 // Global performance monitor
 export const performanceMonitor = new ComponentPerformanceMonitor();
 
-// Optimized component factory
-export function createOptimizedComponent(name, factory) {
-    return function(...args) {
+// Enhanced component with performance tracking
+export interface OptimizedComponent {
+    $componentName: string;
+    $loadTime: number;
+    destroy?(): void;
+}
+
+// Optimized component factory with proper typing
+export function createOptimizedComponent<T extends any[], R>(
+    name: string, 
+    factory: (...args: T) => R
+): (...args: T) => R & OptimizedComponent {
+    return function(...args: T): R & OptimizedComponent {
         performanceMonitor.startLoadTimer(name);
         
         const component = performanceMonitor.measureRenderTime(name, () => factory(...args));
         
         // Add performance tracking to the component
-        if (component && typeof component === 'object') {
-            component.$componentName = name;
-            component.$loadTime = performanceMonitor.endLoadTimer(name);
+        const enhancedComponent = component as R & OptimizedComponent;
+        
+        if (enhancedComponent && typeof enhancedComponent === 'object') {
+            enhancedComponent.$componentName = name;
+            enhancedComponent.$loadTime = performanceMonitor.endLoadTimer(name);
             
             // Add cleanup method
-            const originalDestroy = component.destroy;
-            component.destroy = function() {
+            const originalDestroy = enhancedComponent.destroy;
+            enhancedComponent.destroy = function(): void {
                 if (originalDestroy) {
                     originalDestroy.call(this);
                 }
-                performanceMonitor.loadTimes.delete(name);
-                performanceMonitor.renderTimes.delete(name);
+                // Clean up performance tracking through public methods
+                performanceMonitor.cleanup(name);
             };
         }
         
-        return component;
+        return enhancedComponent;
     };
 }

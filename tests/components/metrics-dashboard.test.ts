@@ -2,7 +2,7 @@
  * Tests for Metrics Dashboard Alpine.js Component
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { metricsDashboard } from '@components/metrics-dashboard';
+import { metricsDashboard } from '../../static/js/components/metrics-dashboard';
 
 // Types for testing
 interface MetricsData {
