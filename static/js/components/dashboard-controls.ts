@@ -3,6 +3,7 @@
 import type * as Alpine from 'alpinejs';
 import { EventData, DashboardState, CustomAlpineComponent } from '../types/alpine';
 import { eventStream } from './event-stream';
+import { ErrorHandler, ERROR_TYPES } from '../utils/error-handler';
 
 // Dashboard export data interface
 interface DashboardExportData {
@@ -49,8 +50,12 @@ export function dashboardControls(): CustomAlpineComponent<DashboardControlsData
                 dashboardStore.refreshAll();
                 this.$store.notifications.add('Dashboard refreshed', 'success');
             } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                this.$store.notifications.add(`Refresh failed: ${errorMessage}`, 'error');
+                const standardError = ErrorHandler.processError(
+                    error as Error,
+                    'dashboardControls',
+                    'refreshAll_manual_refresh'
+                );
+                ErrorHandler.showErrorToUser(standardError, 'dashboardControls');
             } finally {
                 this.refreshing = false;
             }
@@ -98,7 +103,14 @@ export function dashboardControls(): CustomAlpineComponent<DashboardControlsData
         async clearAllData(): Promise<void> {
             try {
                 // Clear all Alpine.js stores
-                this.$store.metrics.data = {};
+                this.$store.metrics.data = {
+                    total_tool_calls: 0,
+                    success_rate: 0,
+                    active_sessions: 0,
+                    avg_duration_ms: 0,
+                    tools_available: 0,
+                    resources_available: 0
+                };
                 this.$store.eventStream.clear();
                 this.$store.notifications.clear();
                 
@@ -114,8 +126,12 @@ export function dashboardControls(): CustomAlpineComponent<DashboardControlsData
                 
                 this.$store.notifications.add('All data cleared', 'success');
             } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                this.$store.notifications.add(`Clear failed: ${errorMessage}`, 'error');
+                const standardError = ErrorHandler.processError(
+                    error as Error,
+                    'dashboardControls',
+                    'clearAllData_data_clear'
+                );
+                ErrorHandler.showErrorToUser(standardError, 'dashboardControls');
             }
         },
         
@@ -138,8 +154,12 @@ export function dashboardControls(): CustomAlpineComponent<DashboardControlsData
                 
                 this.$store.notifications.add('Data exported successfully', 'success');
             } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                this.$store.notifications.add(`Export failed: ${errorMessage}`, 'error');
+                const standardError = ErrorHandler.processError(
+                    error as Error,
+                    'dashboardControls',
+                    'exportData_data_export'
+                );
+                ErrorHandler.showErrorToUser(standardError, 'dashboardControls');
             }
         },
         
@@ -208,7 +228,11 @@ export function enhancedEventStream(): CustomAlpineComponent<EnhancedEventStream
                     }
                 }
             } catch (error) {
-                console.error('Error parsing SSE message:', error);
+                ErrorHandler.processError(
+                    error as Error,
+                    'dashboardControls',
+                    'initSSE_sse_message_parsing'
+                );
             }
         },
         

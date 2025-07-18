@@ -2,6 +2,7 @@
 
 import type * as Alpine from 'alpinejs';
 import { EventData, SSEMessage, CustomAlpineComponent } from '../types/alpine';
+import { ErrorHandler, ERROR_TYPES } from '../utils/error-handler';
 
 // Event Stream component data interface
 interface EventStreamData {
@@ -57,20 +58,15 @@ export function eventStream(): CustomAlpineComponent<EventStreamData> {
          * Handle event stream errors with recovery mechanism
          */
         handleEventStreamError(error: Error, method: string, args: any[] = []): void {
-            if (process.env.NODE_ENV === 'development') {
-                console.error('Event Stream Error:', {
-                    error,
-                    method,
-                    args,
-                    component: 'eventStream'
-                });
-            }
+            // Use standardized error handler
+            const standardError = ErrorHandler.processError(
+                error,
+                'eventStream',
+                `${method}_event_stream_processing`
+            );
             
-            // Add error to global error boundary
-            if (window.Alpine?.store('errorBoundary')) {
-                const errorBoundary = window.Alpine.store('errorBoundary') as any;
-                errorBoundary.addError(error, 'eventStream', method);
-            }
+            // Show error to user through notification system
+            ErrorHandler.showErrorToUser(standardError, 'eventStream');
             
             // Add a fallback error event to the stream
             try {
@@ -80,9 +76,11 @@ export function eventStream(): CustomAlpineComponent<EventStreamData> {
                     timestamp: new Date().toISOString()
                 });
             } catch (fallbackError) {
-                if (process.env.NODE_ENV === 'development') {
-                    console.error('Failed to add fallback error event:', fallbackError);
-                }
+                ErrorHandler.processError(
+                    fallbackError as Error,
+                    'eventStream',
+                    'fallbackErrorEvent'
+                );
             }
         },
         

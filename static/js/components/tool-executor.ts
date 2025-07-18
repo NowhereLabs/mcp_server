@@ -2,6 +2,7 @@
 
 import type * as Alpine from 'alpinejs';
 import { ToolParameter, ToolResult, CustomAlpineComponent } from '../types/alpine';
+import { ErrorHandler, ERROR_TYPES } from '../utils/error-handler';
 
 // Tool execution result interface
 interface ToolExecutionResult {
@@ -103,10 +104,17 @@ export function toolExecutor(toolName: string): CustomAlpineComponent<ToolExecut
                 return data;
                 
             } catch (error) {
+                // Use standardized error handler
+                const standardError = ErrorHandler.processError(
+                    error as Error,
+                    'toolExecutor',
+                    `execute_${(this as any).toolName}`
+                );
+                
                 const errorResult: ToolExecutionResult = {
                     id: executionId,
                     success: false,
-                    error: error instanceof Error ? error.message : 'Unknown error',
+                    error: standardError.message,
                     duration: Date.now() - startTime,
                     timestamp: new Date().toISOString(),
                     args
@@ -115,12 +123,10 @@ export function toolExecutor(toolName: string): CustomAlpineComponent<ToolExecut
                 (this as any).lastResult = errorResult;
                 (this as any).executionHistory.unshift(errorResult);
                 
-                (this as any).$store.notifications.add(
-                    `Error executing tool: ${errorResult.error}`,
-                    'error'
-                );
+                // Show standardized error to user
+                ErrorHandler.showErrorToUser(standardError, 'toolExecutor');
                 
-                throw error;
+                throw standardError;
             } finally {
                 (this as any).loading = false;
             }
@@ -146,7 +152,7 @@ export function toolExecutor(toolName: string): CustomAlpineComponent<ToolExecut
 }
 
 // Tool execution store interface
-interface ToolExecutionStore {
+export interface ToolExecutionStore {
     activeExecutions: Map<string, CustomAlpineComponent<ToolExecutorData>>;
     getExecutor(toolName: string): CustomAlpineComponent<ToolExecutorData>;
     executeGlobal(toolName: string, args?: Record<string, any>): Promise<ToolExecutionResponse>;

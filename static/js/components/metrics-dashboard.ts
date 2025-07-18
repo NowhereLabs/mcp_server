@@ -2,10 +2,21 @@
 
 import type * as Alpine from 'alpinejs';
 import { MetricsData, CustomAlpineComponent } from '../types/alpine';
+import { ErrorHandler, ERROR_TYPES } from '../utils/error-handler';
+
+// Backend metrics structure (matches Rust DashboardMetrics)
+interface DashboardMetrics {
+    total_tool_calls: number;
+    success_rate: number;
+    active_sessions: number;
+    avg_duration_ms: number;
+    tools_available: number;
+    resources_available: number;
+}
 
 // Metrics component data interface
 interface MetricsStoreData {
-    metrics: Record<string, any>;
+    metrics: DashboardMetrics;
     loading: boolean;
     initializeUpdates(): void;
     updateMetrics(event: { detail: { xhr: { response: string } } }): void;
@@ -23,7 +34,7 @@ export function metricsStore(): CustomAlpineComponent<MetricsStoreData> {
         /**
          * Get the current metrics data from the store
          */
-        get metrics(): Record<string, any> {
+        get metrics(): DashboardMetrics {
             return this.$store.metrics.data;
         },
         
@@ -49,9 +60,12 @@ export function metricsStore(): CustomAlpineComponent<MetricsStoreData> {
                 const data = JSON.parse(event.detail.xhr.response);
                 this.$store.metrics.update(data);
             } catch (error) {
-                if (process.env.NODE_ENV === 'development') {
-                    console.error('Error parsing metrics:', error);
-                }
+                const standardError = ErrorHandler.processError(
+                    error as Error,
+                    'metricsStore',
+                    'updateMetrics_json_parsing'
+                );
+                ErrorHandler.showErrorToUser(standardError, 'metricsStore');
                 this.$store.metrics.setLoading(false);
             }
         }
@@ -60,11 +74,11 @@ export function metricsStore(): CustomAlpineComponent<MetricsStoreData> {
 
 // Enhanced metrics store interface (for the store itself)
 interface MetricsStore {
-    data: Record<string, any>;
+    data: DashboardMetrics;
     loading: boolean;
     error: string | null;
     history: MetricsData[];
-    update(newData: Record<string, any>): void;
+    update(newData: DashboardMetrics): void;
     setLoading(state: boolean): void;
     setError(error: string | null): void;
     addMetric(metric: MetricsData): void;
@@ -85,7 +99,14 @@ document.addEventListener('alpine:init', () => {
     if (typeof window !== 'undefined' && window.Alpine) {
         window.Alpine.store('metrics', {
             /** Current metrics data */
-            data: {} as Record<string, any>,
+            data: {
+                total_tool_calls: 0,
+                success_rate: 0,
+                active_sessions: 0,
+                avg_duration_ms: 0,
+                tools_available: 0,
+                resources_available: 0
+            } as DashboardMetrics,
             
             /** Loading state indicator */
             loading: false,
@@ -99,19 +120,18 @@ document.addEventListener('alpine:init', () => {
             /**
              * Update metrics data with new values
              */
-            update(newData: Record<string, any>): void {
+            update(newData: DashboardMetrics): void {
                 this.data = { ...this.data, ...newData };
                 this.loading = false;
                 
                 // Add timestamp for historical tracking
-                if (newData && typeof newData === 'object') {
-                    this.addMetric({
-                        timestamp: Date.now(),
-                        value: Object.keys(newData).length,
-                        type: 'update',
-                        ...newData
-                    });
-                }
+                this.addMetric({
+                    timestamp: Date.now(),
+                    value: newData.total_tool_calls,
+                    type: 'update',
+                    total_tool_calls: newData.total_tool_calls,
+                    success_rate: newData.success_rate
+                });
             },
             
             /**
@@ -144,7 +164,14 @@ document.addEventListener('alpine:init', () => {
              * Clear all metrics data
              */
             clear(): void {
-                this.data = {};
+                this.data = {
+                    total_tool_calls: 0,
+                    success_rate: 0,
+                    active_sessions: 0,
+                    avg_duration_ms: 0,
+                    tools_available: 0,
+                    resources_available: 0
+                };
                 this.history = [];
                 this.loading = false;
                 this.error = null;
@@ -196,8 +223,8 @@ interface MetricsDashboardData {
     refreshInterval: number;
     autoRefresh: boolean;
     lastRefresh: string | null;
-    _refreshTimer: any;
-    metrics: Record<string, any>;
+    _refreshTimer: NodeJS.Timeout | null;
+    metrics: DashboardMetrics;
     loading: boolean;
     error: string | null;
     init(): void;
@@ -221,7 +248,7 @@ export function metricsDashboard(): CustomAlpineComponent<MetricsDashboardData> 
         refreshInterval: 30000,
         autoRefresh: true,
         lastRefresh: null as string | null,
-        _refreshTimer: null as any,
+        _refreshTimer: null as NodeJS.Timeout | null,
         
         get metrics() {
             return this.$store.metrics.data;
@@ -264,14 +291,23 @@ export function metricsDashboard(): CustomAlpineComponent<MetricsDashboardData> 
                 const response = await fetch('/api/metrics');
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw ErrorHandler.createNetworkError(
+                        `Failed to fetch metrics: HTTP ${response.status}`,
+                        { statusCode: response.status, url: '/api/metrics' }
+                    );
                 }
                 
                 const data = await response.json();
                 this.$store.metrics.update(data);
                 this.lastRefresh = new Date().toISOString();
             } catch (error) {
-                (this.$store.metrics as any).setError((error as Error).message);
+                const standardError = ErrorHandler.processError(
+                    error as Error,
+                    'metricsDashboard',
+                    'refresh_api_request'
+                );
+                ErrorHandler.showErrorToUser(standardError, 'metricsDashboard');
+                (this.$store.metrics as any).setError(standardError.message);
             } finally {
                 this.$store.metrics.setLoading(false);
             }
