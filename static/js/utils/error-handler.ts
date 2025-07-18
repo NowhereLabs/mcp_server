@@ -28,17 +28,80 @@ export const ERROR_SEVERITY = {
 export type ErrorType = typeof ERROR_TYPES[keyof typeof ERROR_TYPES];
 export type ErrorSeverity = typeof ERROR_SEVERITY[keyof typeof ERROR_SEVERITY];
 
-// Type guards for error classification
+// Enhanced type guards for error classification
 export function isValidationError(error: Error): boolean {
-    return error.message.includes('validation') || error.message.includes('invalid');
+    const validationKeywords = [
+        'validation', 'invalid', 'required', 'missing', 'empty', 'null', 'undefined',
+        'format', 'syntax', 'parse', 'malformed', 'expected', 'must be', 'cannot be',
+        'too short', 'too long', 'out of range', 'not allowed', 'schema', 'type error'
+    ];
+    
+    const message = error.message.toLowerCase();
+    const name = error.name.toLowerCase();
+    
+    return validationKeywords.some(keyword => 
+        message.includes(keyword) || name.includes(keyword)
+    ) || error.name === 'TypeError' || error.name === 'SyntaxError';
 }
 
 export function isNetworkError(error: Error): boolean {
-    return error.message.includes('network') || error.message.includes('fetch');
+    const networkKeywords = [
+        'network', 'fetch', 'request', 'response', 'connection', 'timeout', 'abort',
+        'offline', 'cors', 'http', 'ssl', 'tls', 'dns', 'socket', 'refused',
+        'unreachable', 'gateway', 'proxy', 'status 4', 'status 5'
+    ];
+    
+    const message = error.message.toLowerCase();
+    const name = error.name.toLowerCase();
+    
+    return networkKeywords.some(keyword => 
+        message.includes(keyword) || name.includes(keyword)
+    ) || /failed to fetch|network error|load failed/i.test(error.message);
 }
 
 export function isSecurityError(error: Error): boolean {
-    return error.message.includes('security') || error.message.includes('permission');
+    const securityKeywords = [
+        'security', 'permission', 'unauthorized', 'forbidden', 'access denied',
+        'authentication', 'authorization', 'token', 'csrf', 'xss', 'injection',
+        'blocked', 'restricted', 'credentials', 'login', 'session expired'
+    ];
+    
+    const message = error.message.toLowerCase();
+    const name = error.name.toLowerCase();
+    
+    return securityKeywords.some(keyword => 
+        message.includes(keyword) || name.includes(keyword)
+    ) || /status 40[13]/i.test(error.message); // 401, 403 status codes
+}
+
+export function isSystemError(error: Error): boolean {
+    const systemKeywords = [
+        'memory', 'disk', 'file system', 'database', 'server', 'internal',
+        'crash', 'overflow', 'stack', 'heap', 'resource', 'quota', 'limit',
+        'unavailable', 'maintenance', 'overload', 'capacity'
+    ];
+    
+    const message = error.message.toLowerCase();
+    const name = error.name.toLowerCase();
+    
+    return systemKeywords.some(keyword => 
+        message.includes(keyword) || name.includes(keyword)
+    ) || /status 50\d/i.test(error.message) || // 5xx status codes
+       error.name === 'RangeError' || error.name === 'ReferenceError';
+}
+
+export function isUserError(error: Error): boolean {
+    const userKeywords = [
+        'user', 'input', 'action', 'operation', 'cancelled', 'aborted',
+        'interrupted', 'duplicate', 'already exists', 'not found', 'empty result'
+    ];
+    
+    const message = error.message.toLowerCase();
+    const name = error.name.toLowerCase();
+    
+    return userKeywords.some(keyword => 
+        message.includes(keyword) || name.includes(keyword)
+    ) || /status 404|status 409|status 410/i.test(error.message); // 404, 409, 410 status codes
 }
 
 /**
@@ -103,6 +166,39 @@ export class StandardError extends Error {
  */
 export class ErrorHandler {
     /**
+     * Sanitize stack traces for production environments
+     */
+    static sanitizeStackTrace(stack?: string): string | undefined {
+        if (!stack) return undefined;
+        
+        // In production, sanitize stack traces to prevent information leakage
+        if (process.env.NODE_ENV === 'production') {
+            // Remove file paths and only keep function/error names
+            return stack
+                .split('\n')
+                .map(line => {
+                    // Keep the error message line
+                    if (!line.trim().startsWith('at ')) {
+                        return line;
+                    }
+                    
+                    // For stack frames, remove file paths and line numbers
+                    const match = line.match(/at\s+([^(]+)/);
+                    if (match) {
+                        return `    at ${match[1].trim()}`;
+                    }
+                    
+                    return '    at <sanitized>';
+                })
+                .slice(0, 5) // Limit to first 5 frames
+                .join('\n');
+        }
+        
+        // In development, return full stack trace
+        return stack;
+    }
+
+    /**
      * Create validation error
      */
     static createValidationError(message: string, details: ErrorDetails = {}): StandardError {
@@ -138,6 +234,86 @@ export class ErrorHandler {
     }
 
     /**
+     * Get error category and suggestions based on error type
+     */
+    static getErrorAnalysis(error: StandardError): {
+        category: string;
+        suggestions: string[];
+        isRecoverable: boolean;
+        userAction: string;
+    } {
+        const analysisMap = {
+            [ERROR_TYPES.VALIDATION]: {
+                category: 'Input Validation',
+                suggestions: [
+                    'Check that all required fields are filled',
+                    'Verify data format matches expected pattern',
+                    'Ensure values are within acceptable ranges'
+                ],
+                isRecoverable: true,
+                userAction: 'Please correct your input and try again'
+            },
+            [ERROR_TYPES.NETWORK]: {
+                category: 'Network/Connectivity',
+                suggestions: [
+                    'Check your internet connection',
+                    'Try refreshing the page',
+                    'Check if the server is accessible',
+                    'Verify proxy/firewall settings'
+                ],
+                isRecoverable: true,
+                userAction: 'Please check your connection and retry'
+            },
+            [ERROR_TYPES.SECURITY]: {
+                category: 'Security/Authentication',
+                suggestions: [
+                    'Verify your login credentials',
+                    'Check if your session has expired',
+                    'Ensure you have proper permissions',
+                    'Contact administrator if needed'
+                ],
+                isRecoverable: false,
+                userAction: 'Authentication required - please log in again'
+            },
+            [ERROR_TYPES.SYSTEM]: {
+                category: 'System/Server',
+                suggestions: [
+                    'Wait a moment and try again',
+                    'Check system status page',
+                    'Contact technical support',
+                    'Save your work and restart the application'
+                ],
+                isRecoverable: false,
+                userAction: 'System issue detected - please try again later'
+            },
+            [ERROR_TYPES.USER]: {
+                category: 'User Operation',
+                suggestions: [
+                    'Review the requested operation',
+                    'Check if the resource exists',
+                    'Verify you have the right permissions',
+                    'Try a different approach'
+                ],
+                isRecoverable: true,
+                userAction: 'Please review your action and try again'
+            },
+            [ERROR_TYPES.UNKNOWN]: {
+                category: 'Unknown',
+                suggestions: [
+                    'Try refreshing the page',
+                    'Check browser console for details',
+                    'Contact support with error details',
+                    'Try again in a few minutes'
+                ],
+                isRecoverable: true,
+                userAction: 'Unexpected error - please try again'
+            }
+        };
+
+        return analysisMap[error.type] || analysisMap[ERROR_TYPES.UNKNOWN];
+    }
+
+    /**
      * Handle and normalize any error
      */
     static handleError(error: Error | string | unknown, context: string = 'unknown'): StandardError {
@@ -153,17 +329,24 @@ export class ErrorHandler {
         if (error instanceof Error) {
             message = error.message;
             details.originalError = error.name;
-            details.stack = error.stack;
+            details.stack = this.sanitizeStackTrace(error.stack);
             
-            // Classify error based on message content using type guards
-            if (isNetworkError(error)) {
-                type = ERROR_TYPES.NETWORK;
-            } else if (isValidationError(error)) {
+            // Enhanced error classification using expanded type guards
+            if (isValidationError(error)) {
                 type = ERROR_TYPES.VALIDATION;
                 severity = ERROR_SEVERITY.LOW;
+            } else if (isNetworkError(error)) {
+                type = ERROR_TYPES.NETWORK;
+                severity = ERROR_SEVERITY.MEDIUM;
             } else if (isSecurityError(error)) {
                 type = ERROR_TYPES.SECURITY;
                 severity = ERROR_SEVERITY.HIGH;
+            } else if (isSystemError(error)) {
+                type = ERROR_TYPES.SYSTEM;
+                severity = ERROR_SEVERITY.HIGH;
+            } else if (isUserError(error)) {
+                type = ERROR_TYPES.USER;
+                severity = ERROR_SEVERITY.LOW;
             }
         } else if (typeof error === 'string') {
             message = error;

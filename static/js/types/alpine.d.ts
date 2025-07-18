@@ -5,6 +5,17 @@
 
 // Import official Alpine.js types
 import type * as Alpine from 'alpinejs';
+import type { ToolExecutionStore } from '../components/tool-executor';
+
+// Backend metrics structure
+interface DashboardMetrics {
+    total_tool_calls: number;
+    success_rate: number;
+    active_sessions: number;
+    avg_duration_ms: number;
+    tools_available: number;
+    resources_available: number;
+}
 
 // Alpine.js Store Types
 interface AlpineStore {
@@ -87,13 +98,13 @@ interface MetricsData {
 }
 
 interface MetricsStore {
-  data: MetricsData[] | Record<string, any>;
+  data: DashboardMetrics;
   loading: boolean;
   history: MetricsData[];
   addMetric(metric: MetricsData): void;
   clear(): void;
   getByType(type: string): MetricsData[];
-  update(newData: Record<string, any>): void;
+  update(newData: DashboardMetrics): void;
   setLoading(state: boolean): void;
 }
 
@@ -154,7 +165,7 @@ declare module 'alpinejs' {
       metrics: MetricsStore;
       tools: ToolStore;
       dashboard: DashboardStore;
-      toolExecution: any;
+      toolExecution: ToolExecutionStore;
       errorBoundary?: {
         errors: any[];
         addError: (error: any, component: string, method: string) => void;
@@ -172,7 +183,7 @@ type CustomAlpineComponent<T> = T & {
     metrics: MetricsStore;
     tools: ToolStore;
     dashboard: DashboardStore;
-    toolExecution: any;
+    toolExecution: ToolExecutionStore;
     errorBoundary?: {
       errors: any[];
       addError: (error: any, component: string, method: string) => void;
