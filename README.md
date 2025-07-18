@@ -11,7 +11,7 @@ A high-performance Model Context Protocol (MCP) server implementation in Rust wi
 - **Real-time Web Dashboard**: Monitor server status, tool executions, and metrics via WebSocket
 - **Flexible Operation Modes**: Run MCP server only, dashboard only, or both together
 - **High-Performance Architecture**: Lock-free concurrent data structures for optimal throughput
-- **Alpine.js Frontend**: Reactive UI components with Tailwind CSS styling
+- **TypeScript Frontend**: Fully type-safe Alpine.js reactive UI components with comprehensive testing
 - **Docker Support**: Production-ready containerization with multi-stage builds
 
 ## Quick Start
@@ -34,7 +34,7 @@ docker pull ghcr.io/nowherelabs/rust-mcp-server:latest
 docker run -p 8080:8080 ghcr.io/nowherelabs/rust-mcp-server:latest
 
 # Or use a specific version
-docker pull ghcr.io/nowherelabs/rust-mcp-server:v0.1.1
+docker pull ghcr.io/nowherelabs/rust-mcp-server:v0.1.3
 ```
 
 #### Building from Source
@@ -76,11 +76,11 @@ cargo run --release -- --mode=both        # Both (default)
 
 ```
 .
-├── config/           # Configuration files
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   ├── vitest.config.js
-│   ├── esbuild.config.js
+├── config/           # Configuration files (TypeScript)
+│   ├── tailwind.config.ts
+│   ├── postcss.config.ts
+│   ├── vitest.config.ts
+│   ├── esbuild.config.ts
 │   ├── rustfmt.toml
 │   └── clippy.toml
 ├── docker/           # Docker deployment files
@@ -110,12 +110,18 @@ cargo run --release -- --mode=both        # Both (default)
 │       └── websocket.rs   # Real-time WebSocket
 ├── static/           # Frontend assets
 │   ├── css/          # Tailwind input/output
-│   └── js/           # Alpine.js components
+│   └── js/           # TypeScript Alpine.js components
 ├── templates/        # Askama HTML templates
-└── tests/            # Test suites
-    ├── integration_tests.rs
-    ├── dashboard_tests.rs
-    └── components/   # JavaScript tests
+├── tests/            # Comprehensive test suites
+│   ├── integration_tests.rs
+│   ├── dashboard_tests.rs
+│   ├── websocket_origin_tests.rs
+│   ├── hot_reload_tests.rs
+│   ├── docker_integration_tests_optimized.rs
+│   ├── components/   # TypeScript component tests
+│   ├── integration/  # End-to-end integration tests
+│   └── utils/        # Utility function tests
+└── tsconfig.json     # TypeScript configuration
 ```
 
 ## Currently Implemented Tools
@@ -135,30 +141,46 @@ The server currently implements an example "echo" tool for testing. To add new t
 - **Broadcast Channels**: Real-time event distribution to dashboard
 
 ### Frontend Stack
-- **Tailwind CSS**: Utility-first styling
-- **Alpine.js**: Lightweight reactive components
-- **ESBuild**: Fast JavaScript bundling
-- **Vitest**: Component testing framework
+- **TypeScript**: Full type safety with strict mode enabled
+- **Tailwind CSS**: Utility-first styling with TypeScript configuration
+- **Alpine.js**: Lightweight reactive components with type definitions
+- **ESBuild**: Fast TypeScript bundling and compilation
+- **Vitest**: Modern testing framework with TypeScript support
 
 ## Development
 
 ### Testing
 
+Our comprehensive test suite includes 174 tests across all components:
+
 ```bash
-# Run all Rust tests
-cargo test
+# Run complete test suite (recommended)
+cargo test && npm test
 
-# Run specific test suites
-cargo test --test integration_tests
-cargo test --test dashboard_tests
+# Rust tests (46 total)
+cargo test                                    # All Rust tests
+cargo test --lib --bins                      # Unit tests (10)
+cargo test --test integration_tests          # Integration tests (5)
+cargo test --test dashboard_tests            # Dashboard tests (7)
+cargo test --test websocket_origin_tests     # WebSocket tests (6)
+cargo test --test hot_reload_tests           # Hot-reload tests (8)
+cargo test --test basic_integration          # Basic integration (9)
+cargo test --test docker_integration_tests_optimized  # Docker tests (5)
 
-# Run JavaScript tests
-npm test
-npm run test:ui      # With UI
-npm run test:coverage # With coverage
+# TypeScript tests (123 total)
+npm test                     # All TypeScript tests
+npm run test:ui             # With interactive UI
+npm run test:coverage       # With coverage report
+npm run type-check          # TypeScript compilation check
 
-# Run tests with output
-cargo test -- --nocapture
+# Test categories:
+# - Component tests (58): All Alpine.js components
+# - Integration tests (33): End-to-end functionality
+# - Utility tests (32): Error handling and helpers
+
+# Development testing
+cargo test -- --nocapture   # Rust tests with output
+npm test -- --reporter=verbose  # Detailed test output
 ```
 
 ### Code Quality
@@ -198,7 +220,7 @@ cargo run -- --dev
 # Traditional development commands
 npm run watch-css        # Watch CSS changes
 
-# Build JavaScript with sourcemaps
+# Build TypeScript with sourcemaps
 npm run build-js:dev
 
 # Run with debug logging
@@ -252,7 +274,8 @@ MIT License - see LICENSE file for details
 ## Contributing
 
 Contributions are welcome! Please ensure:
-- All tests pass (`cargo test`)
+- All tests pass (`cargo test && npm test` - 174 total tests)
 - Code is formatted (`cargo fmt`)
 - No clippy warnings (`cargo clippy -- -D warnings`)
-- New features include tests
+- TypeScript compiles without errors (`npm run type-check`)
+- New features include comprehensive tests (both Rust and TypeScript)

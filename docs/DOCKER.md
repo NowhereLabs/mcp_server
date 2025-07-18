@@ -18,7 +18,7 @@ docker-compose -f docker/docker-compose.yml up --build
 
 The project uses a multi-stage Docker build for optimal image size and security:
 
-1. **Node.js Stage**: Builds CSS and JavaScript assets
+1. **Node.js Stage**: Builds CSS and TypeScript assets
 2. **Rust Build Stage**: Compiles the Rust binary
 3. **Runtime Stage**: Minimal image with just the binary and assets
 

@@ -69,17 +69,17 @@ fi
 echo "Building Alpine.js components..."
 if [ "$BUILD_MODE" = "development" ]; then
     if ! npm run build-js:dev; then
-        handle_error "Failed to build JavaScript components in development mode" "JavaScript build"
+        handle_error "Failed to build TypeScript components in development mode" "TypeScript build"
     fi
 else
     if ! npm run build-js:prod; then
-        handle_error "Failed to build JavaScript components in production mode" "JavaScript build"
+        handle_error "Failed to build TypeScript components in production mode" "TypeScript build"
     fi
 fi
 
-# Verify JavaScript output was generated
+# Verify TypeScript output was generated
 if [ ! -f "static/js/dashboard.min.js" ]; then
-    handle_error "JavaScript output file not generated" "JavaScript build validation"
+    handle_error "TypeScript output file not generated" "TypeScript build validation"
 fi
 
 echo "Building Rust project..."

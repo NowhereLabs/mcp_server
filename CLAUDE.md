@@ -60,24 +60,41 @@ Features:
 The hot-reload uses WebSocket to notify the browser when frontend files change. Backend changes require a full server restart, which cargo-watch handles automatically.
 
 ### Testing
+
+Comprehensive test suite with 174 total tests across all components:
+
 ```bash
-# Run all Rust tests
-cargo test
+# Run complete test suite (recommended)
+cargo test && npm test
 
-# Run specific test file
-cargo test --test integration_tests
-cargo test --test dashboard_tests
+# Rust tests (46 total)
+cargo test                                    # All Rust tests
+cargo test --lib --bins                      # Unit tests (10)
+cargo test --test basic_integration          # Basic integration (9)
+cargo test --test integration_tests          # Integration tests (5)
+cargo test --test dashboard_tests            # Dashboard tests (7)
+cargo test --test websocket_origin_tests     # WebSocket tests (6)
+cargo test --test hot_reload_tests           # Hot-reload tests (8)
 
-# Run tests for specific module
-cargo test shared::state::tests::
-
-# Run JavaScript tests
-npm test                    # Run all Vitest tests
+# TypeScript tests (123 total)
+npm test                    # All Vitest tests
 npm run test:ui            # Run tests with UI
 npm run test:coverage      # Generate coverage report
+npm run type-check         # Check all TypeScript files compile
+
+# Test categories:
+# - Component tests (58): All Alpine.js components
+# - Integration tests (33): End-to-end functionality  
+# - Utility tests (32): Error handling and helpers
 
 # Run tests with output
 cargo test -- --nocapture
+
+# Docker Integration Tests (5 total, optimized)
+cargo test --test docker_integration_tests_optimized -- --test-threads=1    # Fast tests (~2.5 minutes)
+
+# Clean up Docker test artifacts
+cargo test --test docker_integration_tests_optimized test_cleanup_docker_artifacts -- --ignored --exact
 ```
 
 ### Code Quality
@@ -95,9 +112,15 @@ cargo audit
 cargo outdated
 ```
 
+### Testing Documentation
+For comprehensive guidance on testing Alpine.js components, see:
+- **[Alpine.js Testing Guide](./docs/ALPINE_TESTING_GUIDE.md)**: Complete testing patterns and best practices
+- **Test Coverage**: Use `npm run test:coverage` to generate coverage reports
+- **Test Infrastructure**: All tests use TypeScript with proper Alpine.js context binding
+
 ## Architecture Overview
 
-This is a high-performance Rust MCP server with real-time web dashboard. The codebase follows a modular architecture with clear separation of concerns.
+This is a high-performance Rust MCP server with real-time web dashboard using TypeScript. The codebase follows a modular architecture with clear separation of concerns.
 
 ### Core Architecture
 
@@ -150,12 +173,19 @@ Currently, the server implements an "echo" tool. To add new tools:
 
 ### Frontend Development
 
-The dashboard uses:
-- **Tailwind CSS**: Utility-first styling (config in `config/tailwind.config.js`)
-- **Alpine.js**: Reactive components (source in `static/js/`)
+The dashboard uses a fully TypeScript-based stack:
+- **TypeScript**: Full type safety with strict mode enabled (123 comprehensive tests)
+- **Tailwind CSS**: Utility-first styling (config in `config/tailwind.config.ts`)
+- **Alpine.js**: Reactive components with type definitions (source in `static/js/`)
 - **Askama**: Type-safe templates (in `templates/`)
+- **Vitest**: Modern testing framework with TypeScript support
 
-JavaScript components are bundled with ESBuild and tested with Vitest.
+All frontend components are fully tested with:
+- **Component tests (58)**: All Alpine.js components
+- **Integration tests (33)**: End-to-end functionality
+- **Utility tests (32)**: Error handling and helper functions
+
+TypeScript components are bundled with ESBuild and tested with Vitest. Complete migration from JavaScript ensures type safety and better developer experience.
 
 ### Configuration
 

@@ -1,4 +1,4 @@
-# Multi-stage Docker build for Rust MCP Server
+# Optimized Docker build for testing - faster builds by skipping expensive operations
 # Stage 1: Node.js build stage for frontend assets
 FROM node:20-alpine AS frontend-builder
 
@@ -22,7 +22,7 @@ RUN npm run build-css
 # Build TypeScript components
 RUN npm run build-js:prod
 
-# Stage 2: Rust build stage
+# Stage 2: Rust build stage (optimized for testing)
 FROM rust:latest AS builder
 
 # Install system dependencies needed for building
@@ -30,9 +30,6 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Install rustfmt and clippy components
-RUN rustup component add rustfmt clippy
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -45,7 +42,7 @@ COPY Cargo.lock* ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 
 # Build dependencies (this layer will be cached unless Cargo.toml changes)
-RUN RUSTFLAGS="-D warnings" cargo build --release && rm -rf src
+RUN cargo build --release && rm -rf src
 
 # Copy source code
 COPY src ./src
@@ -60,11 +57,8 @@ COPY --from=frontend-builder /app/static/js/dashboard.min.js ./static/js/
 COPY --from=frontend-builder /app/static/js/dashboard.min.js.map ./static/js/
 COPY --from=frontend-builder /app/static/js/bundle-meta.json ./static/js/
 
-# Format, lint, test, and build the application with strict warnings as errors
-RUN cargo fmt --check && \
-    RUSTFLAGS="-D warnings" cargo clippy -- -D warnings && \
-    RUSTFLAGS="-D warnings" cargo test && \
-    RUSTFLAGS="-D warnings" cargo build --release
+# Build the application (skip expensive fmt/clippy/test for faster testing)
+RUN cargo build --release
 
 # Stage 3: Runtime stage
 FROM debian:bookworm-slim

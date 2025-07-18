@@ -1,34 +1,79 @@
 {
   "inputs": {
-    "node_modules/alpinejs/dist/module.esm.js": {
-      "bytes": 102519,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/component-loader.js": {
-      "bytes": 4783,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/performance-monitor.js": {
-      "bytes": 8722,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/components/optimized-components.js": {
-      "bytes": 9368,
+    "static/js/utils/error-handler.ts": {
+      "bytes": 12360,
       "imports": [
         {
-          "path": "static/js/component-loader.js",
+          "path": "../types/alpine",
           "kind": "import-statement",
-          "original": "../component-loader.js"
+          "external": true
         }
       ],
       "format": "esm"
     },
-    "static/js/components/tool-executor.js": {
-      "bytes": 4948,
-      "imports": [],
+    "static/js/components/echo-tool.ts": {
+      "bytes": 8553,
+      "imports": [
+        {
+          "path": "static/js/utils/error-handler.ts",
+          "kind": "import-statement",
+          "original": "../utils/error-handler"
+        },
+        {
+          "path": "../types/alpine",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/components/metrics-dashboard.ts": {
+      "bytes": 10003,
+      "imports": [
+        {
+          "path": "../types/alpine",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/components/event-stream.ts": {
+      "bytes": 8872,
+      "imports": [
+        {
+          "path": "../types/alpine",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/components/notification-system.ts": {
+      "bytes": 10905,
+      "imports": [
+        {
+          "path": "static/js/utils/error-handler.ts",
+          "kind": "import-statement",
+          "original": "../utils/error-handler"
+        },
+        {
+          "path": "../types/alpine",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "static/js/components/tool-executor.ts": {
+      "bytes": 8948,
+      "imports": [
+        {
+          "path": "../types/alpine",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
       "format": "esm"
     },
     "static/js/components/htmx-alpine-bridge.js": {
@@ -36,170 +81,110 @@
       "imports": [],
       "format": "esm"
     },
-    "static/js/components/dashboard-controls.js": {
-      "bytes": 5563,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/components/error-boundary.js": {
-      "bytes": 9255,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/utils/error-handler.js": {
-      "bytes": 11928,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/components/echo-tool.js": {
-      "bytes": 8136,
+    "static/js/components/dashboard-controls.ts": {
+      "bytes": 8382,
       "imports": [
         {
-          "path": "static/js/utils/error-handler.js",
+          "path": "../types/alpine",
           "kind": "import-statement",
-          "original": "../utils/error-handler.js"
+          "external": true
+        },
+        {
+          "path": "static/js/components/event-stream.ts",
+          "kind": "import-statement",
+          "original": "./event-stream"
         }
       ],
       "format": "esm"
     },
-    "static/js/components/metrics-dashboard.js": {
-      "bytes": 2623,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/components/event-stream.js": {
-      "bytes": 7834,
-      "imports": [],
-      "format": "esm"
-    },
-    "static/js/components/notification-system.js": {
-      "bytes": 8499,
+    "static/js/alpine-components.ts": {
+      "bytes": 3353,
       "imports": [
         {
-          "path": "static/js/utils/error-handler.js",
+          "path": "static/js/utils/error-handler.ts",
           "kind": "import-statement",
-          "original": "../utils/error-handler.js"
-        }
-      ],
-      "format": "esm"
-    },
-    "static/js/alpine-components-optimized.js": {
-      "bytes": 5707,
-      "imports": [
-        {
-          "path": "node_modules/alpinejs/dist/module.esm.js",
-          "kind": "import-statement",
-          "original": "alpinejs"
+          "original": "./utils/error-handler"
         },
         {
-          "path": "static/js/component-loader.js",
+          "path": "static/js/components/echo-tool.ts",
           "kind": "import-statement",
-          "original": "./component-loader.js"
+          "original": "./components/echo-tool"
         },
         {
-          "path": "static/js/performance-monitor.js",
+          "path": "static/js/components/metrics-dashboard.ts",
           "kind": "import-statement",
-          "original": "./performance-monitor.js"
+          "original": "./components/metrics-dashboard"
         },
         {
-          "path": "static/js/components/optimized-components.js",
+          "path": "static/js/components/event-stream.ts",
           "kind": "import-statement",
-          "original": "./components/optimized-components.js"
+          "original": "./components/event-stream"
         },
         {
-          "path": "static/js/components/tool-executor.js",
+          "path": "static/js/components/notification-system.ts",
           "kind": "import-statement",
-          "original": "./components/tool-executor.js"
+          "original": "./components/notification-system"
+        },
+        {
+          "path": "static/js/components/tool-executor.ts",
+          "kind": "import-statement",
+          "original": "./components/tool-executor"
         },
         {
           "path": "static/js/components/htmx-alpine-bridge.js",
           "kind": "import-statement",
-          "original": "./components/htmx-alpine-bridge.js"
+          "original": "./components/htmx-alpine-bridge"
         },
         {
-          "path": "static/js/components/dashboard-controls.js",
+          "path": "static/js/components/dashboard-controls.ts",
           "kind": "import-statement",
-          "original": "./components/dashboard-controls.js"
-        },
-        {
-          "path": "static/js/components/error-boundary.js",
-          "kind": "import-statement",
-          "original": "./components/error-boundary.js"
-        },
-        {
-          "path": "static/js/components/echo-tool.js",
-          "kind": "dynamic-import",
-          "original": "./components/echo-tool.js"
-        },
-        {
-          "path": "static/js/components/metrics-dashboard.js",
-          "kind": "dynamic-import",
-          "original": "./components/metrics-dashboard.js"
-        },
-        {
-          "path": "static/js/components/event-stream.js",
-          "kind": "dynamic-import",
-          "original": "./components/event-stream.js"
-        },
-        {
-          "path": "static/js/components/notification-system.js",
-          "kind": "dynamic-import",
-          "original": "./components/notification-system.js"
+          "original": "./components/dashboard-controls"
         }
       ],
       "format": "esm"
     }
   },
   "outputs": {
+    "static/js/dashboard.min.js.map": {
+      "imports": [],
+      "exports": [],
+      "inputs": {},
+      "bytes": 104526
+    },
     "static/js/dashboard.min.js": {
       "imports": [],
       "exports": [],
-      "entryPoint": "static/js/alpine-components-optimized.js",
+      "entryPoint": "static/js/alpine-components.ts",
       "inputs": {
-        "static/js/utils/error-handler.js": {
-          "bytesInOutput": 2963
+        "static/js/utils/error-handler.ts": {
+          "bytesInOutput": 7389
         },
-        "static/js/components/echo-tool.js": {
-          "bytesInOutput": 2314
+        "static/js/components/echo-tool.ts": {
+          "bytesInOutput": 5473
         },
-        "static/js/components/metrics-dashboard.js": {
-          "bytesInOutput": 564
+        "static/js/components/metrics-dashboard.ts": {
+          "bytesInOutput": 3583
         },
-        "static/js/components/event-stream.js": {
-          "bytesInOutput": 2006
+        "static/js/components/event-stream.ts": {
+          "bytesInOutput": 5436
         },
-        "static/js/components/notification-system.js": {
-          "bytesInOutput": 1961
+        "static/js/components/notification-system.ts": {
+          "bytesInOutput": 6563
         },
-        "node_modules/alpinejs/dist/module.esm.js": {
-          "bytesInOutput": 41205
-        },
-        "static/js/component-loader.js": {
-          "bytesInOutput": 1923
-        },
-        "static/js/performance-monitor.js": {
-          "bytesInOutput": 3887
-        },
-        "static/js/components/optimized-components.js": {
-          "bytesInOutput": 3686
-        },
-        "static/js/components/tool-executor.js": {
-          "bytesInOutput": 2113
+        "static/js/components/tool-executor.ts": {
+          "bytesInOutput": 5554
         },
         "static/js/components/htmx-alpine-bridge.js": {
-          "bytesInOutput": 2378
+          "bytesInOutput": 3959
         },
-        "static/js/components/dashboard-controls.js": {
-          "bytesInOutput": 2843
+        "static/js/components/dashboard-controls.ts": {
+          "bytesInOutput": 5284
         },
-        "static/js/components/error-boundary.js": {
-          "bytesInOutput": 3182
-        },
-        "static/js/alpine-components-optimized.js": {
-          "bytesInOutput": 1450
+        "static/js/alpine-components.ts": {
+          "bytesInOutput": 1027
         }
       },
-      "bytes": 72683
+      "bytes": 44804
     }
   }
 }

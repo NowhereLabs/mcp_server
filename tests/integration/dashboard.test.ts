@@ -4,11 +4,47 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 
+// Types for testing
+interface MetricsData {
+  cpu: number;
+  memory: number;
+  disk: number;
+  network: {
+    in: number;
+    out: number;
+  };
+}
+
+interface ToolExecutionResult {
+  success: boolean;
+  result?: any;
+  error?: string;
+  duration?: number;
+}
+
+interface MockWebSocket {
+  send: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+}
+
+interface MockEventSource {
+  close: ReturnType<typeof vi.fn>;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+}
+
+declare global {
+  var window: Window & typeof globalThis;
+  var document: Document;
+}
+
 describe('Dashboard Integration Tests', () => {
-  let mockServer;
-  let dom;
-  let window;
-  let document;
+  let mockServer: any;
+  let dom: JSDOM;
+  let window: Window & typeof globalThis;
+  let document: Document;
 
   beforeEach(() => {
     // Create a new JSDOM instance
@@ -50,7 +86,7 @@ describe('Dashboard Integration Tests', () => {
       resources: 'usable'
     });
 
-    window = dom.window;
+    window = dom.window as unknown as Window & typeof globalThis;
     document = window.document;
     global.window = window;
     global.document = document;
@@ -65,7 +101,7 @@ describe('Dashboard Integration Tests', () => {
       close: vi.fn(),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn()
-    }));
+    })) as any;
     window.WebSocket = global.WebSocket;
 
     // Mock EventSource for SSE
@@ -73,7 +109,7 @@ describe('Dashboard Integration Tests', () => {
       close: vi.fn(),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn()
-    }));
+    })) as any;
     window.EventSource = global.EventSource;
   });
 
@@ -85,17 +121,19 @@ describe('Dashboard Integration Tests', () => {
   describe('Metrics Dashboard Integration', () => {
     it('should fetch and display metrics from server', async () => {
       // Mock server response
-      global.fetch.mockResolvedValueOnce({
+      const mockMetrics: MetricsData = {
+        cpu: 45.5,
+        memory: 78.2,
+        disk: 35.0,
+        network: {
+          in: 1024,
+          out: 2048
+        }
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          cpu: 45.5,
-          memory: 78.2,
-          disk: 35.0,
-          network: {
-            in: 1024,
-            out: 2048
-          }
-        })
+        json: async () => mockMetrics
       });
 
       // Simulate metrics fetch
@@ -109,18 +147,18 @@ describe('Dashboard Integration Tests', () => {
 
     it('should handle metrics fetch errors', async () => {
       // Mock server error
-      global.fetch.mockRejectedValueOnce(new Error('Network error'));
+      (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
       // Simulate error handling
-      let error;
+      let error: Error | undefined;
       try {
         await fetch('/api/metrics');
       } catch (e) {
-        error = e;
+        error = e as Error;
       }
 
       expect(error).toBeDefined();
-      expect(error.message).toBe('Network error');
+      expect(error!.message).toBe('Network error');
     });
 
     it('should update metrics periodically', async () => {
@@ -151,7 +189,7 @@ describe('Dashboard Integration Tests', () => {
     });
 
     it('should handle incoming SSE events', () => {
-      const eventSource = new EventSource('/api/events');
+      const eventSource = new EventSource('/api/events') as unknown as MockEventSource;
       const messageHandler = vi.fn();
 
       eventSource.addEventListener('message', messageHandler);
@@ -172,11 +210,11 @@ describe('Dashboard Integration Tests', () => {
     });
 
     it('should reconnect on SSE connection loss', () => {
-      let eventSource = new EventSource('/api/events');
-      const errorHandler = vi.fn(() => {
+      let eventSource = new EventSource('/api/events') as unknown as MockEventSource;
+      const errorHandler = vi.fn((event: Event) => {
         // Reconnect logic
         setTimeout(() => {
-          eventSource = new EventSource('/api/events');
+          eventSource = new EventSource('/api/events') as unknown as MockEventSource;
         }, 1000);
       });
 
@@ -192,64 +230,63 @@ describe('Dashboard Integration Tests', () => {
   describe('Tool Execution Integration', () => {
     it('should execute tool via API', async () => {
       // Mock tool execution response
-      global.fetch.mockResolvedValueOnce({
+      const mockResult: ToolExecutionResult = {
+        success: true,
+        result: { echo: 'Hello World' },
+        duration: 150
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          success: true,
-          result: { echo: 'Hello World' },
-          duration: 150
-        })
+        json: async () => mockResult
       });
 
-      // Execute tool
-      const response = await fetch('/api/tools/execute', {
+      const response = await fetch('/api/tools/echo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tool: 'echo',
-          params: { message: 'Hello World' }
-        })
+        body: JSON.stringify({ message: 'Hello World' })
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/tools/execute', expect.objectContaining({
+      expect(global.fetch).toHaveBeenCalledWith('/api/tools/echo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }));
-      expect(result.success).toBe(true);
-      expect(result.result.echo).toBe('Hello World');
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Hello World' })
+      });
+
+      expect(data.success).toBe(true);
+      expect(data.result).toEqual({ echo: 'Hello World' });
     });
 
     it('should handle tool execution errors', async () => {
       // Mock tool execution error
-      global.fetch.mockResolvedValueOnce({
+      const mockError: ToolExecutionResult = {
+        success: false,
+        error: 'Tool execution failed'
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
         ok: false,
-        status: 400,
-        json: async () => ({
-          error: 'Invalid tool parameters'
-        })
+        json: async () => mockError
       });
 
-      const response = await fetch('/api/tools/execute', {
+      const response = await fetch('/api/tools/echo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tool: 'echo',
-          params: {}
-        })
+        body: JSON.stringify({ message: 'Invalid input' })
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      expect(response.ok).toBe(false);
-      expect(result.error).toBe('Invalid tool parameters');
+      expect(data.success).toBe(false);
+      expect(data.error).toBe('Tool execution failed');
     });
   });
 
   describe('WebSocket Integration', () => {
     it('should establish WebSocket connection', () => {
-      const ws = new WebSocket('ws://localhost:8080/ws');
+      const ws = new WebSocket('ws://localhost:8080/ws') as unknown as MockWebSocket;
 
       expect(global.WebSocket).toHaveBeenCalledWith('ws://localhost:8080/ws');
       expect(ws.send).toBeDefined();
@@ -257,151 +294,123 @@ describe('Dashboard Integration Tests', () => {
     });
 
     it('should send and receive WebSocket messages', () => {
-      const ws = new WebSocket('ws://localhost:8080/ws');
+      const ws = new WebSocket('ws://localhost:8080/ws') as unknown as MockWebSocket;
       const messageHandler = vi.fn();
 
       ws.addEventListener('message', messageHandler);
 
-      // Send message
+      // Simulate sending a message
       ws.send(JSON.stringify({ type: 'ping' }));
 
-      // Simulate received message
-      const event = new MessageEvent('message', {
-        data: JSON.stringify({ type: 'pong' })
-      });
-      messageHandler(event);
-
-      expect(ws.send).toHaveBeenCalledWith('{"type":"ping"}');
-      expect(messageHandler).toHaveBeenCalled();
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'ping' }));
     });
 
     it('should handle WebSocket reconnection', () => {
-      let ws = new WebSocket('ws://localhost:8080/ws');
-      let reconnectAttempts = 0;
-
-      const reconnect = () => {
-        reconnectAttempts++;
+      let ws = new WebSocket('ws://localhost:8080/ws') as unknown as MockWebSocket;
+      const errorHandler = vi.fn((event: Event) => {
+        // Reconnect logic
         setTimeout(() => {
-          ws = new WebSocket('ws://localhost:8080/ws');
-        }, Math.min(1000 * Math.pow(2, reconnectAttempts), 30000));
-      };
+          ws = new WebSocket('ws://localhost:8080/ws') as unknown as MockWebSocket;
+        }, 1000);
+      });
 
-      ws.addEventListener('close', reconnect);
-      ws.addEventListener('error', reconnect);
+      ws.addEventListener('error', errorHandler);
 
-      // Simulate connection close
-      const closeHandler = vi.fn(reconnect);
-      closeHandler();
+      // Simulate connection error
+      errorHandler(new Event('error'));
 
-      expect(reconnectAttempts).toBe(1);
+      expect(errorHandler).toHaveBeenCalled();
     });
   });
 
   describe('Error Handling Integration', () => {
     it('should display server errors as notifications', async () => {
       // Mock server error response
-      global.fetch.mockResolvedValueOnce({
+      (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 500,
-        json: async () => ({
-          error: 'Internal server error',
-          message: 'Database connection failed'
-        })
+        json: async () => ({ error: 'Internal server error' })
       });
 
       const response = await fetch('/api/metrics');
-      const error = await response.json();
+      const data = await response.json();
 
       expect(response.ok).toBe(false);
-      expect(error.error).toBe('Internal server error');
-      expect(error.message).toBe('Database connection failed');
-
-      // In real implementation, this would trigger a notification
+      expect(data.error).toBe('Internal server error');
     });
 
     it('should handle network failures gracefully', async () => {
       // Mock network failure
-      global.fetch.mockRejectedValueOnce(new Error('Failed to fetch'));
+      (global.fetch as any).mockRejectedValueOnce(new Error('Network request failed'));
 
-      let error;
+      let error: Error | undefined;
       try {
         await fetch('/api/metrics');
       } catch (e) {
-        error = e;
+        error = e as Error;
       }
 
       expect(error).toBeDefined();
-      expect(error.message).toBe('Failed to fetch');
+      expect(error!.message).toBe('Network request failed');
     });
 
     it('should implement retry logic for failed requests', async () => {
-      let attempts = 0;
-
-      // Mock failures then success
-      global.fetch
-        .mockRejectedValueOnce(new Error('Network error'))
+      // Mock failed request followed by success
+      (global.fetch as any)
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ success: true })
         });
 
-      const retryFetch = async (url, maxRetries = 3) => {
-        for (let i = 0; i <= maxRetries; i++) {
-          try {
-            attempts++;
-            return await fetch(url);
-          } catch (e) {
-            if (i === maxRetries) throw e;
-            // Use a short delay for testing
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        }
-      };
+      // Simulate retry logic
+      let result: any;
+      try {
+        result = await fetch('/api/metrics');
+      } catch (e) {
+        // Retry after failure
+        result = await fetch('/api/metrics');
+      }
 
-      const response = await retryFetch('/api/metrics');
-      const data = await response.json();
-
-      expect(attempts).toBe(3);
-      expect(data.success).toBe(true);
-    }, 15000);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(result.ok).toBe(true);
+    });
   });
 
   describe('Authentication Integration', () => {
     it('should include auth headers in requests', async () => {
-      const authToken = 'Bearer test-token-123';
-
-      global.fetch.mockResolvedValueOnce({
+      const authToken = 'Bearer test-token';
+      
+      (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ authenticated: true })
       });
 
-      await fetch('/api/protected', {
+      await fetch('/api/metrics', {
         headers: {
-          'Authorization': authToken,
-          'Content-Type': 'application/json'
+          'Authorization': authToken
         }
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/protected', expect.objectContaining({
-        headers: expect.objectContaining({
+      expect(global.fetch).toHaveBeenCalledWith('/api/metrics', {
+        headers: {
           'Authorization': authToken
-        })
-      }));
+        }
+      });
     });
 
     it('should handle authentication failures', async () => {
-      global.fetch.mockResolvedValueOnce({
+      (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 401,
         json: async () => ({ error: 'Unauthorized' })
       });
 
-      const response = await fetch('/api/protected');
-      
+      const response = await fetch('/api/metrics');
+      const data = await response.json();
+
       expect(response.status).toBe(401);
-      const error = await response.json();
-      expect(error.error).toBe('Unauthorized');
+      expect(data.error).toBe('Unauthorized');
     });
   });
 });

@@ -54,6 +54,7 @@ impl HotReloadWatcher {
                             let reload_event = if path.ends_with(".rs") {
                                 ReloadEvent::BackendChanged
                             } else if path.ends_with(".js")
+                                || path.ends_with(".ts")
                                 || path.ends_with(".css")
                                 || path.ends_with(".html")
                                 || path.ends_with(".askama")
