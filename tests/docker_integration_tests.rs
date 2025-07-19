@@ -3,46 +3,44 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::timeout;
 
 fn unique_image_name(base: &str) -> String {
-    use std::process;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
+    use std::process;
+
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    
+
     let pid = process::id();
-    
+
     // Add thread ID to further differentiate
     let thread_id = std::thread::current().id();
-    
+
     // Create a hash of the combination
     let mut hasher = DefaultHasher::new();
     timestamp.hash(&mut hasher);
     pid.hash(&mut hasher);
     thread_id.hash(&mut hasher);
     let hash = hasher.finish();
-    
+
     format!("{}-{}-{}", base, timestamp, hash)
 }
 
 fn cleanup_docker_resources(image_name: &str, container_name: Option<&str>) {
     // Stop and remove container if specified
     if let Some(container) = container_name {
-        let _ = Command::new("docker")
-            .args(&["stop", container])
-            .output();
+        let _ = Command::new("docker").args(&["stop", container]).output();
         let _ = Command::new("docker")
             .args(&["rm", "-f", container])
             .output();
     }
-    
+
     // Remove image with force
     let _ = Command::new("docker")
         .args(&["rmi", "-f", image_name])
         .output();
-    
+
     // Prune build cache to prevent conflicts
     let _ = Command::new("docker")
         .args(&["builder", "prune", "-f"])
@@ -57,7 +55,15 @@ async fn test_docker_build_succeeds() {
     cleanup_docker_resources(&image_name, None);
 
     let output = Command::new("docker")
-        .args(&["build", "--no-cache", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
@@ -183,7 +189,15 @@ async fn test_docker_container_runs_with_correct_uid() {
 
     // Build the image first
     let build_output = Command::new("docker")
-        .args(&["build", "--no-cache", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
@@ -269,7 +283,15 @@ async fn test_docker_file_permissions() {
 
     // Build the image first
     let build_output = Command::new("docker")
-        .args(&["build", "--no-cache", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
