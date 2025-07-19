@@ -27,45 +27,6 @@ fn create_temp_workspace() -> TempDir {
     temp_dir
 }
 
-/// Helper to setup test environment with proper directory handling
-struct TestEnvironment {
-    _temp_dir: TempDir,
-    original_dir: std::path::PathBuf,
-}
-
-impl TestEnvironment {
-    fn new() -> Self {
-        let temp_dir = create_temp_workspace();
-        let original_dir = std::env::current_dir().expect("Failed to get current dir");
-
-        // Change to temp directory for the test
-        std::env::set_current_dir(temp_dir.path()).expect("Failed to change directory");
-
-        Self {
-            _temp_dir: temp_dir,
-            original_dir,
-        }
-    }
-
-    fn temp_path(&self) -> &Path {
-        self._temp_dir.path()
-    }
-}
-
-impl Drop for TestEnvironment {
-    fn drop(&mut self) {
-        // Restore original directory
-        let _ = std::env::set_current_dir(&self.original_dir);
-    }
-}
-
-/// Create a test file with given content
-fn create_test_file(dir: &Path, filename: &str, content: &str) {
-    let file_path = dir.join(filename);
-    let mut file = fs::File::create(&file_path).expect("Failed to create test file");
-    file.write_all(content.as_bytes())
-        .expect("Failed to write test file");
-}
 
 /// Test that the hot reload watcher can be created and started
 #[tokio::test]

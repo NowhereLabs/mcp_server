@@ -419,11 +419,7 @@ export class ErrorHandler {
             );
         }
 
-        // Also add to error boundary store if available
-        if (typeof window !== 'undefined' && window.Alpine?.store('errorBoundary')) {
-            const errorBoundaryStore = window.Alpine.store('errorBoundary') as any;
-            errorBoundaryStore.addError(error, component, 'unknown');
-        }
+        // Error boundary functionality removed - handled via notifications instead
     }
 
     /**

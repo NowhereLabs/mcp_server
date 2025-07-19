@@ -31,10 +31,10 @@
     <!-- Hero Section -->
     <div class="text-center py-8">
         <h2 class="text-4xl font-bold text-gradient mb-4">
-            Echo Tool Server
+            File Search Server
         </h2>
         <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-            A simplified MCP server demonstrating real-time tool execution with a modern, professional interface.
+            A powerful MCP server demonstrating file search capabilities with real-time tool execution.
         </p>
     </div>
 
@@ -122,34 +122,34 @@
         
         <!-- Center Column - Tool Interface -->
         <div class="lg:col-span-5 space-y-4 lg:space-y-6">
-            <!-- Echo Tool Interactive Panel -->
+            <!-- File Search Tool Interactive Panel -->
             <div class="glass-card p-8 neon-glow animate-float" style="animation-delay: 1s;">
                 <div class="text-center mb-8">
                     <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center neon-glow">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-2">Echo Tool</h3>
-                    <p class="text-gray-300">Test the echo functionality with real-time execution</p>
+                    <h3 class="text-2xl font-bold text-white mb-2">File Search Tool</h3>
+                    <p class="text-gray-300">Search through files and directories with real-time execution</p>
                 </div>
                 
-                <div x-data="echoTool()" x-init="init()" class="space-y-6">
+                <div x-data="fileTool()" x-init="init()" class="space-y-6">
                     <form @submit.prevent="execute()" class="space-y-6">
                         <div>
-                            <label for="message" class="block text-sm font-semibold text-gray-300 mb-2">
-                                Message to Echo
+                            <label for="query" class="block text-sm font-semibold text-gray-300 mb-2">
+                                Search Query
                             </label>
                             <input 
-                                x-model="message"
+                                x-model="query"
                                 type="text" 
-                                placeholder="Enter your message here..."
+                                placeholder="Enter search query..."
                                 class="input-dark w-full text-lg py-3"
-                                :class="{'border-red-500': errors.message}"
+                                :class="{'border-red-500': errors.query}"
                                 :disabled="loading"
                             >
-                            <div x-show="errors.message" x-transition class="text-red-400 text-sm mt-1">
-                                <span x-text="errors.message"></span>
+                            <div x-show="errors.query" x-transition class="text-red-400 text-sm mt-1">
+                                <span x-text="errors.query"></span>
                             </div>
                         </div>
                         
@@ -157,8 +157,8 @@
                             <button 
                                 type="submit" 
                                 class="btn-accent flex-1 py-4 text-lg font-semibold"
-                                :disabled="loading || !message.trim()"
-                                :class="{'opacity-50': loading || !message.trim()}"
+                                :disabled="loading || !query.trim()"
+                                :class="{'opacity-50': loading || !query.trim()}"
                             >
                                 <svg x-show="!loading" class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
@@ -166,7 +166,7 @@
                                 <svg x-show="loading" class="w-5 h-5 mr-2 inline animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                 </svg>
-                                <span x-text="loading ? 'Executing...' : 'Execute Echo Tool'"></span>
+                                <span x-text="loading ? 'Searching...' : 'Search Files'"></span>
                             </button>
                             
                             <button 

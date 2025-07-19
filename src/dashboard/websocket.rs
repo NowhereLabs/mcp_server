@@ -20,6 +20,12 @@ pub struct WebSocketRateLimiter {
     time_window: Duration,
 }
 
+impl Default for WebSocketRateLimiter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WebSocketRateLimiter {
     pub fn new() -> Self {
         Self {
@@ -33,30 +39,19 @@ impl WebSocketRateLimiter {
     pub async fn check_rate_limit(&self, ip: IpAddr) -> bool {
         let now = Instant::now();
         let mut connections = self.connections.write().await;
-        
+
         // Clean old entries
         let entry = connections.entry(ip).or_insert_with(Vec::new);
         entry.retain(|&timestamp| now.duration_since(timestamp) < self.time_window);
-        
+
         // Check if under limit
         if entry.len() >= self.max_connections_per_ip {
             return false;
         }
-        
+
         // Add new connection
         entry.push(now);
         true
-    }
-
-    /// Clean up expired entries periodically
-    pub async fn cleanup(&self) {
-        let now = Instant::now();
-        let mut connections = self.connections.write().await;
-        
-        connections.retain(|_, timestamps| {
-            timestamps.retain(|&timestamp| now.duration_since(timestamp) < self.time_window);
-            !timestamps.is_empty()
-        });
     }
 }
 

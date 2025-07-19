@@ -63,7 +63,7 @@ COPY --from=frontend-builder /app/static/js/bundle-meta.json ./static/js/
 # Format, lint, test, and build the application with strict warnings as errors
 RUN cargo fmt --check && \
     RUSTFLAGS="-D warnings" cargo clippy -- -D warnings && \
-    RUSTFLAGS="-D warnings" cargo test && \
+    RUSTFLAGS="-D warnings" cargo test --lib && \
     RUSTFLAGS="-D warnings" cargo build --release
 
 # Stage 3: Runtime stage

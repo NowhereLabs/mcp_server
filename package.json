@@ -19,7 +19,11 @@
     "test:ui": "vitest -c ./config/vitest.config.ts --ui",
     "test:coverage": "vitest -c ./config/vitest.config.ts --coverage",
     "type-check": "tsc --noEmit",
-    "build:ts": "tsc"
+    "build:ts": "tsc",
+    "generate-types": "cargo run --bin generate-types",
+    "watch-types": "cargo watch -x 'run --bin generate-types'",
+    "build:production": "./scripts/build-production.sh",
+    "test:production": "cargo test --test production_tests -- --nocapture"
   },
   "dependencies": {
     "alpinejs": "^3.13.0"

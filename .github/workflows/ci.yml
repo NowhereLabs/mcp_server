@@ -1,0 +1,176 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy, rustfmt
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install npm dependencies
+      run: npm install
+    
+    - name: Check Rust formatting
+      run: cargo fmt --check
+    
+    - name: Run Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+    
+    - name: Generate TypeScript types
+      run: cargo run --bin generate-types
+    
+    - name: Verify TypeScript types were generated
+      run: |
+        echo "Checking if TypeScript types were generated..."
+        ls -la static/js/types/generated/
+        test -f static/js/types/generated/McpStatus.ts || (echo "McpStatus.ts not found" && exit 1)
+        test -f static/js/types/generated/SessionInfo.ts || (echo "SessionInfo.ts not found" && exit 1)
+        test -f static/js/types/generated/ToolCall.ts || (echo "ToolCall.ts not found" && exit 1)
+        test -f static/js/types/generated/index.ts || (echo "index.ts not found" && exit 1)
+        echo "All TypeScript types generated successfully!"
+    
+    - name: Run TypeScript type checking
+      run: npm run type-check
+    
+    - name: Build frontend assets
+      run: |
+        npm run build-css
+        npm run build-js:prod
+    
+    - name: Run Rust tests
+      run: cargo test --verbose -- --test-threads=1
+    
+    - name: Run TypeScript tests
+      run: npm test
+    
+    - name: Build release binary
+      run: cargo build --release --verbose
+    
+    - name: Test schema generation
+      run: |
+        echo "Testing schema generation..."
+        # Run specific schema generation tests
+        cargo test --test schema_generation_tests -- --nocapture
+        echo "Schema generation tests completed successfully!"
+    
+    - name: Test integration with generated types
+      run: |
+        echo "Testing integration with generated types..."
+        # Run TypeScript compilation tests
+        cargo test --test typescript_compilation_tests -- --nocapture
+
+  type-safety:
+    runs-on: ubuntu-latest
+    name: Type Safety Check
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install npm dependencies
+      run: npm install
+    
+    - name: Generate TypeScript types
+      run: cargo run --bin generate-types
+    
+    - name: Check TypeScript compilation
+      run: |
+        echo "Checking TypeScript compilation..."
+        npx tsc --noEmit --skipLibCheck static/js/types/generated/index.ts
+        echo "TypeScript types compile successfully!"
+    
+    - name: Validate type consistency
+      run: |
+        echo "Validating type consistency between Rust and TypeScript..."
+        # Check that generated types have expected structure
+        grep -q "interface McpStatus" static/js/types/generated/McpStatus.ts || (echo "McpStatus interface not found" && exit 1)
+        grep -q "interface SessionInfo" static/js/types/generated/SessionInfo.ts || (echo "SessionInfo interface not found" && exit 1)
+        grep -q "interface ToolCall" static/js/types/generated/ToolCall.ts || (echo "ToolCall interface not found" && exit 1)
+        echo "Type consistency check passed!"
+
+  schema-validation:
+    runs-on: ubuntu-latest
+    name: Schema Validation
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Generate and validate schemas
+      run: |
+        echo "Testing schema generation and validation..."
+        # Run comprehensive schema generation tests
+        cargo test --test schema_generation_tests -- --nocapture
+        echo "Schema validation complete!"
+
+  documentation:
+    runs-on: ubuntu-latest
+    name: Documentation Check
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Check documentation
+      run: |
+        echo "Checking documentation..."
+        cargo doc --no-deps --all-features
+        echo "Documentation check complete!"
+    
+    - name: Check README and docs
+      run: |
+        echo "Checking README and documentation files..."
+        test -f README.md || (echo "README.md not found" && exit 1)
+        test -f CLAUDE.md || (echo "CLAUDE.md not found" && exit 1)
+        test -f docs/SCHEMA_MIGRATION_PLAN.md || (echo "SCHEMA_MIGRATION_PLAN.md not found" && exit 1)
+        echo "Documentation files check passed!"

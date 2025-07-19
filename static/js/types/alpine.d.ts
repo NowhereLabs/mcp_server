@@ -6,9 +6,18 @@
 // Import official Alpine.js types
 import type * as Alpine from 'alpinejs';
 import type { ToolExecutionStore } from '../components/tool-executor';
+import type { 
+  DashboardMetrics, 
+  McpStatus, 
+  SessionInfo, 
+  ToolCall as GeneratedToolCall, 
+  ToolCallResult,
+  SystemEvent
+} from './generated';
 
-// Backend metrics structure
-interface DashboardMetrics {
+// Legacy interface for backward compatibility during migration
+// TODO: Remove after migration complete
+interface LegacyDashboardMetrics {
     total_tool_calls: number;
     success_rate: number;
     active_sessions: number;
@@ -22,6 +31,8 @@ interface AlpineStore {
   [key: string]: any;
 }
 
+// Use generated SystemEvent type instead of manual EventData
+// Keep legacy for backward compatibility
 interface EventData {
   id?: string;
   type: string;
@@ -30,6 +41,9 @@ interface EventData {
   uri?: string;
   timestamp: string;
 }
+
+// Type alias for generated event type
+type EventDataGenerated = SystemEvent;
 
 interface EventStreamStore {
   events: EventData[];
@@ -98,13 +112,13 @@ interface MetricsData {
 }
 
 interface MetricsStore {
-  data: DashboardMetrics;
+  data: LegacyDashboardMetrics;
   loading: boolean;
   history: MetricsData[];
   addMetric(metric: MetricsData): void;
   clear(): void;
   getByType(type: string): MetricsData[];
-  update(newData: DashboardMetrics): void;
+  update(newData: LegacyDashboardMetrics): void;
   setLoading(state: boolean): void;
 }
 

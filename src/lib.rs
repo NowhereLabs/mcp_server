@@ -21,7 +21,7 @@
 //! ## Tools
 //!
 //! Currently implements:
-//! - `echo`: Test tool for development and validation
+//! - `file_search`: Search for files by pattern in a directory
 //!
 //! New tools can be added by implementing handlers in the [`server::mcp_router`] module.
 //!
@@ -44,3 +44,4 @@
 pub mod dashboard;
 pub mod server;
 pub mod shared;
+pub mod tools;

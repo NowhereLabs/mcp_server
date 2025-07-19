@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, RwLock};
+use ts_rs::TS;
 use uuid::Uuid;
 
 /// Core application state shared between MCP server and dashboard.
@@ -190,17 +191,20 @@ impl Default for AppState {
 }
 
 /// MCP server connection and capability status
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub struct McpStatus {
     /// Whether MCP server is currently connected
     pub connected: bool,
     /// Last heartbeat timestamp
+    #[ts(type = "string | null")]
     pub last_heartbeat: Option<DateTime<Utc>>,
     /// Server capabilities (tools, resources, prompts)
     pub capabilities: Vec<String>,
     /// Server identification information
     pub server_info: ServerInfo,
     /// When the server was started
+    #[ts(type = "string")]
     pub started_at: DateTime<Utc>,
 }
 
@@ -224,7 +228,8 @@ impl Default for McpStatus {
 }
 
 /// Server identification information
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub struct ServerInfo {
     /// Server name
     pub name: String,
@@ -233,15 +238,19 @@ pub struct ServerInfo {
 }
 
 /// Information about an active client session
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub struct SessionInfo {
     /// Unique session identifier
+    #[ts(type = "string")]
     pub id: Uuid,
     /// When the session was started
+    #[ts(type = "string")]
     pub started_at: DateTime<Utc>,
     /// Number of requests processed in this session
     pub request_count: u64,
     /// Last activity timestamp
+    #[ts(type = "string")]
     pub last_activity: DateTime<Utc>,
 }
 
@@ -273,21 +282,26 @@ impl Default for SessionInfo {
 }
 
 /// Record of a tool call execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub struct ToolCall {
     /// Unique identifier for this tool call
+    #[ts(type = "string")]
     pub id: Uuid,
     /// Name of the tool that was called
     pub name: String,
     /// Tool name used in some legacy tests
     pub tool_name: String,
     /// Arguments passed to the tool
+    #[ts(type = "Record<string, any>")]
     pub arguments: serde_json::Value,
     /// When the tool was called
+    #[ts(type = "string")]
     pub timestamp: DateTime<Utc>,
     /// How long the tool took to execute (milliseconds)
     pub duration_ms: Option<u64>,
-    /// Execution time (for compatibility)
+    /// Execution time in milliseconds (for compatibility)
+    #[ts(type = "number")]
     pub execution_time: std::time::Duration,
     /// Result of the tool execution
     pub result: Option<ToolCallResult>,
@@ -341,23 +355,29 @@ impl ToolCall {
 }
 
 /// Result of a tool call execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub enum ToolCallResult {
     /// Tool executed successfully with result data
-    Success(serde_json::Value),
+    Success(#[ts(type = "Record<string, any>")] serde_json::Value),
     /// Tool execution failed with error message
     Error(String),
 }
 
 /// System events for real-time updates
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub enum SystemEvent {
     /// MCP server connected
     McpConnected,
     /// MCP server disconnected
     McpDisconnected,
     /// A tool was called
-    ToolCalled { name: String, id: Uuid },
+    ToolCalled {
+        name: String,
+        #[ts(type = "string")]
+        id: Uuid,
+    },
     /// A resource was accessed
     ResourceAccessed { uri: String },
     /// System error occurred
@@ -384,7 +404,8 @@ pub struct SystemEventDetails {
 }
 
 /// Different types of metrics that can be collected
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../static/js/types/generated/")]
 pub enum MetricValue {
     /// Incrementing counter
     Counter(u64),

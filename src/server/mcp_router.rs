@@ -12,15 +12,25 @@ use mcp_spec::{
 use serde_json::Value;
 
 use crate::shared::state::AppState;
+use crate::tools::{file_search::FileSearchTool, ToolRegistry};
 
 #[derive(Clone)]
 pub struct McpRouter {
     state: AppState,
+    tool_registry: ToolRegistry,
 }
 
 impl McpRouter {
     pub fn new(state: AppState) -> Self {
-        Self { state }
+        let mut tool_registry = ToolRegistry::new();
+
+        // Register available tools
+        tool_registry.register(FileSearchTool);
+
+        Self {
+            state,
+            tool_registry,
+        }
     }
 }
 
@@ -30,7 +40,10 @@ impl Router for McpRouter {
     }
 
     fn instructions(&self) -> String {
-        "A simple Rust MCP server with an echo tool for testing.".to_string()
+        format!(
+            "A high-performance Rust MCP server with real-time dashboard. Available tools: {}",
+            self.tool_registry.tool_count()
+        )
     }
 
     fn capabilities(&self) -> ServerCapabilities {
@@ -42,20 +55,15 @@ impl Router for McpRouter {
     }
 
     fn list_tools(&self) -> Vec<Tool> {
-        vec![Tool {
-            name: "echo".to_string(),
-            description: "Echo back the provided message".to_string(),
-            input_schema: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "type": "string",
-                        "description": "The message to echo back"
-                    }
-                },
-                "required": ["message"]
-            }),
-        }]
+        self.tool_registry
+            .list_tools()
+            .into_iter()
+            .map(|tool_info| Tool {
+                name: tool_info.name,
+                description: tool_info.description,
+                input_schema: tool_info.input_schema,
+            })
+            .collect()
     }
 
     fn call_tool(
@@ -64,42 +72,75 @@ impl Router for McpRouter {
         arguments: Value,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Content>, ToolError>> + Send + 'static>> {
         let state = self.state.clone();
+        let tool_registry = self.tool_registry.clone();
         let tool_name = tool_name.to_string();
+        let arguments = arguments.clone();
 
         Box::pin(async move {
-            match tool_name.as_str() {
-                "echo" => {
-                    let message = arguments
-                        .get("message")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            ToolError::InvalidParameters("Missing message".to_string())
-                        })?;
+            let start_time = std::time::Instant::now();
 
-                    // Log the tool call to shared state
-                    let tool_call = crate::shared::state::ToolCall::new(
-                        "echo".to_string(),
-                        serde_json::json!({
-                            "message": message
-                        }),
-                    )
-                    .complete(
-                        crate::shared::state::ToolCallResult::Success(serde_json::json!({
-                            "echoed": message
-                        })),
-                        1,
-                    );
+            // Log the tool call start
+            let tool_call =
+                crate::shared::state::ToolCall::new(tool_name.clone(), arguments.clone());
+            let _tool_call_id = tool_call.id;
+            let _ = state.record_tool_call(tool_call).await;
 
-                    let _ = state.record_tool_call(tool_call).await;
+            // Execute the tool
+            match tool_registry.call_tool(&tool_name, arguments.clone()).await {
+                Ok(result) => {
+                    let duration = start_time.elapsed().as_millis() as u64;
+
+                    // Update tool call with success
+                    let completed_call =
+                        crate::shared::state::ToolCall::new(tool_name.clone(), arguments.clone())
+                            .complete(
+                                crate::shared::state::ToolCallResult::Success(result.clone()),
+                                duration,
+                            );
+                    let _ = state.record_tool_call(completed_call).await;
+
+                    // Format result for MCP response
+                    let result_text = match result {
+                        Value::String(s) => s,
+                        _ => serde_json::to_string_pretty(&result)
+                            .unwrap_or_else(|_| "Tool executed successfully".to_string()),
+                    };
 
                     Ok(vec![Content::Text(TextContent {
-                        text: format!("Echo: {message}"),
+                        text: result_text,
                         annotations: None,
                     })])
                 }
-                _ => Err(ToolError::InvalidParameters(format!(
-                    "Unknown tool: {tool_name}"
-                ))),
+                Err(e) => {
+                    let duration = start_time.elapsed().as_millis() as u64;
+
+                    // Update tool call with error
+                    let failed_call =
+                        crate::shared::state::ToolCall::new(tool_name.clone(), arguments.clone())
+                            .complete(
+                                crate::shared::state::ToolCallResult::Error(e.to_string()),
+                                duration,
+                            );
+                    let _ = state.record_tool_call(failed_call).await;
+
+                    // Convert our tool error to MCP tool error
+                    let mcp_error = match e {
+                        crate::server::error::ToolError::InvalidInput(msg) => {
+                            ToolError::InvalidParameters(msg)
+                        }
+                        crate::server::error::ToolError::ToolNotFound(msg) => {
+                            ToolError::InvalidParameters(format!("Tool not found: {msg}"))
+                        }
+                        crate::server::error::ToolError::ExecutionError(msg) => {
+                            ToolError::ExecutionError(msg)
+                        }
+                        crate::server::error::ToolError::SerializationError(msg) => {
+                            ToolError::ExecutionError(format!("Serialization error: {msg}"))
+                        }
+                    };
+
+                    Err(mcp_error)
+                }
             }
         })
     }

@@ -1,6 +1,7 @@
 mod dashboard;
 mod server;
 mod shared;
+mod tools;
 
 use std::sync::Arc;
 

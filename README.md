@@ -102,7 +102,6 @@ cargo run --release -- --mode=both        # Both (default)
 │   ├── server/       # MCP protocol implementation
 │   │   ├── mod.rs    # MCP server setup
 │   │   ├── mcp_router.rs  # Tool routing
-│   │   ├── echo_test.rs   # Example echo tool
 │   │   └── error.rs       # Error types
 │   └── dashboard/    # Web interface
 │       ├── server.rs      # Actix Web server

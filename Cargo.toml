@@ -10,6 +10,10 @@ readme = "README.md"
 keywords = ["mcp", "server", "dashboard", "realtime", "monitoring"]
 categories = ["web-programming", "network-programming"]
 
+[[bin]]
+name = "rust-mcp-server"
+path = "src/main.rs"
+
 [dependencies]
 # Core state management dependencies
 arc-swap = "1.7"
@@ -60,6 +64,11 @@ lazy_static = "1.4"
 notify = "6.1"
 notify-debouncer-mini = "0.4"
 
+# Type generation dependencies
+schemars = { version = "0.8", features = ["chrono"] }
+ts-rs = "7.0"
+regex = "1.10"
+
 # Testing dependencies
 [dev-dependencies]
 tokio-test = "0.4"
@@ -67,3 +76,6 @@ tempfile = "3.10"
 mockito = "1.4"
 wiremock = "0.6"
 assert_matches = "1.5"
+
+[build-dependencies]
+ts-rs = "7.0"

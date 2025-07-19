@@ -196,14 +196,14 @@ describe('MCP Server End-to-End Tests', () => {
         result: {
           tools: [
             {
-              name: 'echo',
-              description: 'Echo back the provided message',
+              name: 'file_search',
+              description: 'Search for files by name pattern',
               inputSchema: {
                 type: 'object',
                 properties: {
-                  message: { type: 'string' }
+                  query: { type: 'string' }
                 },
-                required: ['message']
+                required: ['query']
               }
             }
           ]
@@ -224,16 +224,16 @@ describe('MCP Server End-to-End Tests', () => {
       const data = await response.json();
 
       expect(data.result.tools).toHaveLength(1);
-      expect(data.result.tools[0].name).toBe('echo');
+      expect(data.result.tools[0].name).toBe('file_search');
     });
 
     it('should execute tools', async () => {
       const toolCallRequest: MCPToolCallRequest = {
         method: 'tools/call',
         params: {
-          name: 'echo',
+          name: 'file_search',
           arguments: {
-            message: 'Hello, World!'
+            query: 'test'
           }
         }
       };
@@ -284,7 +284,7 @@ describe('MCP Server End-to-End Tests', () => {
       const event = new MessageEvent('message', {
         data: JSON.stringify({
           type: 'tool_called',
-          name: 'echo',
+          name: 'file_search',
           timestamp: new Date().toISOString(),
           duration: 150,
           success: true
@@ -396,7 +396,7 @@ describe('MCP Server End-to-End Tests', () => {
       const invalidRequest = {
         method: 'tools/call',
         params: {
-          name: 'echo'
+          name: 'file_search'
           // Missing required 'arguments' field
         }
       };

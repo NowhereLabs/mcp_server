@@ -56,6 +56,11 @@ if ! npm install; then
     handle_error "Failed to install npm dependencies" "dependency installation"
 fi
 
+echo "Generating TypeScript types..."
+if ! cargo run --bin generate-types; then
+    handle_error "Failed to generate TypeScript types" "type generation"
+fi
+
 echo "Building Tailwind CSS..."
 if ! npm run build-css; then
     handle_error "Failed to build Tailwind CSS" "CSS build"

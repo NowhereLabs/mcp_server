@@ -32,6 +32,7 @@ echo -e "${GREEN}✅ Starting cargo-watch...${NC}"
 echo -e "${YELLOW}📁 Watching for changes in src/, templates/, static/, and config/${NC}"
 echo -e "${YELLOW}🔄 Server will restart automatically on backend changes${NC}"
 echo -e "${YELLOW}🔥 Frontend changes will trigger browser hot-reload${NC}"
+echo -e "${YELLOW}⚡ TypeScript types will be regenerated when Rust types change${NC}"
 echo -e "${YELLOW}📝 Press Ctrl+C to stop${NC}\n"
 
 # Run cargo-watch
