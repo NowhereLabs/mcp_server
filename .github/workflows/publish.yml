@@ -49,6 +49,9 @@ jobs:
     - name: Install npm dependencies
       run: npm install
     
+    - name: Generate TypeScript types
+      run: cargo run --bin generate-types
+    
     - name: Build frontend assets
       run: |
         npm run build-css

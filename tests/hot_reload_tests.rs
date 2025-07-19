@@ -1,6 +1,4 @@
 use std::fs;
-use std::io::Write;
-use std::path::Path;
 use std::time::Duration;
 
 use rust_mcp_server::dashboard::hot_reload::{HotReloadWatcher, ReloadEvent};
@@ -25,46 +23,6 @@ fn create_temp_workspace() -> TempDir {
     fs::create_dir_all(&src_dir).expect("Failed to create src dir");
 
     temp_dir
-}
-
-/// Helper to setup test environment with proper directory handling
-struct TestEnvironment {
-    _temp_dir: TempDir,
-    original_dir: std::path::PathBuf,
-}
-
-impl TestEnvironment {
-    fn new() -> Self {
-        let temp_dir = create_temp_workspace();
-        let original_dir = std::env::current_dir().expect("Failed to get current dir");
-
-        // Change to temp directory for the test
-        std::env::set_current_dir(temp_dir.path()).expect("Failed to change directory");
-
-        Self {
-            _temp_dir: temp_dir,
-            original_dir,
-        }
-    }
-
-    fn temp_path(&self) -> &Path {
-        self._temp_dir.path()
-    }
-}
-
-impl Drop for TestEnvironment {
-    fn drop(&mut self) {
-        // Restore original directory
-        let _ = std::env::set_current_dir(&self.original_dir);
-    }
-}
-
-/// Create a test file with given content
-fn create_test_file(dir: &Path, filename: &str, content: &str) {
-    let file_path = dir.join(filename);
-    let mut file = fs::File::create(&file_path).expect("Failed to create test file");
-    file.write_all(content.as_bytes())
-        .expect("Failed to write test file");
 }
 
 /// Test that the hot reload watcher can be created and started
@@ -153,40 +111,37 @@ async fn test_file_type_categorization() {
     // Frontend files
     let frontend_extensions = vec!["js", "css", "html", "askama"];
     for ext in frontend_extensions {
-        let filename = format!("test.{}", ext);
+        let filename = format!("test.{ext}");
         assert!(
             filename.ends_with(".js")
                 || filename.ends_with(".css")
                 || filename.ends_with(".html")
                 || filename.ends_with(".askama"),
-            "File {} should be categorized as frontend",
-            filename
+            "File {filename} should be categorized as frontend"
         );
     }
 
     // Backend files
     let backend_extensions = vec!["rs"];
     for ext in backend_extensions {
-        let filename = format!("test.{}", ext);
+        let filename = format!("test.{ext}");
         assert!(
             filename.ends_with(".rs"),
-            "File {} should be categorized as backend",
-            filename
+            "File {filename} should be categorized as backend"
         );
     }
 
     // Other files should be ignored
     let ignored_extensions = vec!["txt", "md", "log", "backup"];
     for ext in ignored_extensions {
-        let filename = format!("test.{}", ext);
+        let filename = format!("test.{ext}");
         assert!(
             !filename.ends_with(".js")
                 && !filename.ends_with(".css")
                 && !filename.ends_with(".html")
                 && !filename.ends_with(".askama")
                 && !filename.ends_with(".rs"),
-            "File {} should be ignored",
-            filename
+            "File {filename} should be ignored"
         );
     }
 }
@@ -202,8 +157,8 @@ async fn test_reload_event_types() {
     let _backend_clone = backend_event.clone();
 
     // Test that events have proper Debug implementation
-    let frontend_debug = format!("{:?}", frontend_event);
-    let backend_debug = format!("{:?}", backend_event);
+    let frontend_debug = format!("{frontend_event:?}");
+    let backend_debug = format!("{backend_event:?}");
 
     assert!(frontend_debug.contains("FrontendChanged"));
     assert!(backend_debug.contains("BackendChanged"));

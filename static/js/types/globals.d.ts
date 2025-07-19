@@ -14,7 +14,7 @@ declare global {
     };
     
     // Component functions
-    echoTool?: () => any;
+    fileTool?: () => any;
     metricsStore?: () => any;
     eventStream?: () => any;
     notificationSystem?: () => any;

@@ -67,9 +67,6 @@ describe('Notification System Component', () => {
         if (storeName === 'notifications') {
           return mockStore;
         }
-        if (storeName === 'errorBoundary') {
-          return mockErrorBoundaryStore;
-        }
         return mockStore;
       })
     };

@@ -48,17 +48,11 @@ interface ErrorBoundaryError {
   method: string;
 }
 
-interface MockErrorBoundaryStore {
-  errors: ErrorBoundaryError[];
-  addError: any;
-  clearErrors: any;
-}
 
 interface MockStores {
   notifications: MockNotificationStore;
   metrics: MockMetricsStore;
   eventStream: MockEventStreamStore;
-  errorBoundary: MockErrorBoundaryStore;
 }
 
 interface MockPerformanceMemory {
@@ -164,16 +158,6 @@ beforeEach(() => {
         mockStores.eventStream.events = [];
       })
     },
-    errorBoundary: {
-      errors: [],
-      addError: vi.fn((error: any, component: string, method: string) => {
-        const errorEntry: ErrorBoundaryError = { error, component, method };
-        mockStores.errorBoundary.errors.push(errorEntry);
-      }),
-      clearErrors: vi.fn(() => {
-        mockStores.errorBoundary.errors = [];
-      })
-    }
   };
   
   // Mock Alpine.store to return our mock stores

@@ -1,5 +1,21 @@
 use thiserror::Error;
 
+// Tool-specific error types
+#[derive(Error, Debug)]
+pub enum ToolError {
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    #[error("Tool not found: {0}")]
+    ToolNotFound(String),
+
+    #[error("Execution error: {0}")]
+    ExecutionError(String),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+}
+
 // Allow dead_code: Comprehensive error type system for future functionality
 // Many variants represent planned error conditions not yet implemented
 #[allow(dead_code)]

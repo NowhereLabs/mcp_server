@@ -2,13 +2,14 @@
 
 import type * as Alpine from 'alpinejs';
 import { EventData, DashboardState, CustomAlpineComponent } from '../types/alpine';
+import { SystemEvent } from '../types/generated';
 import { eventStream } from './event-stream';
 import { ErrorHandler, ERROR_TYPES } from '../utils/error-handler';
 
 // Dashboard export data interface
 interface DashboardExportData {
     metrics: any;
-    events: EventData[];
+    events: EventData[] | SystemEvent[];
     toolStats: any;
     timestamp: string;
 }

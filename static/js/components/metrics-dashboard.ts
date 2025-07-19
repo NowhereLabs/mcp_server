@@ -4,8 +4,8 @@ import type * as Alpine from 'alpinejs';
 import { MetricsData, CustomAlpineComponent } from '../types/alpine';
 import { ErrorHandler, ERROR_TYPES } from '../utils/error-handler';
 
-// Backend metrics structure (matches Rust DashboardMetrics)
-interface DashboardMetrics {
+// Legacy dashboard metrics structure (for backward compatibility)
+interface LegacyDashboardMetrics {
     total_tool_calls: number;
     success_rate: number;
     active_sessions: number;
@@ -16,7 +16,7 @@ interface DashboardMetrics {
 
 // Metrics component data interface
 interface MetricsStoreData {
-    metrics: DashboardMetrics;
+    metrics: LegacyDashboardMetrics;
     loading: boolean;
     initializeUpdates(): void;
     updateMetrics(event: { detail: { xhr: { response: string } } }): void;
@@ -34,7 +34,7 @@ export function metricsStore(): CustomAlpineComponent<MetricsStoreData> {
         /**
          * Get the current metrics data from the store
          */
-        get metrics(): DashboardMetrics {
+        get metrics(): LegacyDashboardMetrics {
             return this.$store.metrics.data;
         },
         
@@ -74,11 +74,11 @@ export function metricsStore(): CustomAlpineComponent<MetricsStoreData> {
 
 // Enhanced metrics store interface (for the store itself)
 interface MetricsStore {
-    data: DashboardMetrics;
+    data: LegacyDashboardMetrics;
     loading: boolean;
     error: string | null;
     history: MetricsData[];
-    update(newData: DashboardMetrics): void;
+    update(newData: LegacyDashboardMetrics): void;
     setLoading(state: boolean): void;
     setError(error: string | null): void;
     addMetric(metric: MetricsData): void;
@@ -107,7 +107,7 @@ if (typeof document !== 'undefined') {
                 avg_duration_ms: 0,
                 tools_available: 0,
                 resources_available: 0
-            } as DashboardMetrics,
+            } as LegacyDashboardMetrics,
             
             /** Loading state indicator */
             loading: false,
@@ -121,7 +121,7 @@ if (typeof document !== 'undefined') {
             /**
              * Update metrics data with new values
              */
-            update(newData: DashboardMetrics): void {
+            update(newData: LegacyDashboardMetrics): void {
                 this.data = { ...this.data, ...newData };
                 this.loading = false;
                 
@@ -226,7 +226,7 @@ interface MetricsDashboardData {
     autoRefresh: boolean;
     lastRefresh: string | null;
     _refreshTimer: NodeJS.Timeout | null;
-    metrics: DashboardMetrics;
+    metrics: LegacyDashboardMetrics;
     loading: boolean;
     error: string | null;
     init(): void;

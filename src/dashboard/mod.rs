@@ -6,4 +6,5 @@
 pub mod handlers;
 pub mod hot_reload;
 pub mod server;
+pub mod types;
 pub mod websocket;

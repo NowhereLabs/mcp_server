@@ -56,11 +56,6 @@ fn escape_html(input: &str) -> String {
 // Error type constants
 const ERROR_TYPE_VALIDATION: &str = "validation";
 const ERROR_TYPE_SECURITY: &str = "security";
-// Future error types - allow dead code for now
-#[allow(dead_code)]
-const ERROR_TYPE_SYSTEM: &str = "system";
-#[allow(dead_code)]
-const ERROR_TYPE_NETWORK: &str = "network";
 
 // Input sanitization for tool parameters
 fn sanitize_tool_input(input: &str) -> Result<String, ErrorResponse> {
@@ -276,7 +271,7 @@ pub async fn get_metrics(data: web::Data<AppState>) -> Result<HttpResponse> {
         success_rate: (success_rate * 10.0).round() / 10.0, // Round to 1 decimal place
         active_sessions: data.active_sessions.len(),
         avg_duration_ms: avg_duration.round(),
-        tools_available: 1,     // echo
+        tools_available: 1,     // file_search
         resources_available: 0, // disabled
     };
 
@@ -340,9 +335,9 @@ pub async fn get_tool_calls(data: web::Data<AppState>) -> Result<HttpResponse> {
 
 pub async fn list_tools(_data: web::Data<AppState>) -> Result<HttpResponse> {
     let tools = vec![ToolInfo {
-        name: "echo".to_string(),
-        description: "Echo back the provided message".to_string(),
-        category: "utility".to_string(),
+        name: "file_search".to_string(),
+        description: "Search for files and directories with advanced filtering options".to_string(),
+        category: "filesystem".to_string(),
     }];
 
     let template = ToolsTemplate { tools };
@@ -420,13 +415,14 @@ pub async fn execute_tool(
 
     // Execute the tool based on its name
     let result: Result<serde_json::Value, String> = match payload.name.as_str() {
-        "echo" => match payload.arguments.get("message").and_then(|v| v.as_str()) {
-            Some(message) => {
-                // Sanitize the input message
-                match sanitize_tool_input(message) {
-                    Ok(sanitized_message) => Ok(serde_json::json!({
-                        "echoed": sanitized_message,
-                        "message": format!("Echo: {}", sanitized_message)
+        "file_search" => match payload.arguments.get("query").and_then(|v| v.as_str()) {
+            Some(query) => {
+                // Sanitize the input query
+                match sanitize_tool_input(query) {
+                    Ok(sanitized_query) => Ok(serde_json::json!({
+                        "query": sanitized_query,
+                        "message": format!("Search executed for: {}", sanitized_query),
+                        "results": []
                     })),
                     Err(error_response) => {
                         // Return structured error response
@@ -441,7 +437,7 @@ pub async fn execute_tool(
             }
             None => {
                 let error_response = ErrorResponse::new(
-                    "Missing required parameter: message".to_string(),
+                    "Missing required parameter: query".to_string(),
                     ERROR_TYPE_VALIDATION,
                 );
                 return Ok(HttpResponse::BadRequest().json(ExecuteToolResponse {
@@ -454,7 +450,7 @@ pub async fn execute_tool(
         },
         _ => {
             let error_msg = format!(
-                "Unknown tool: {} (only 'echo' tool is available)",
+                "Unknown tool: {} (only 'file_search' tool is available)",
                 payload.name
             );
             tool_call.result = Some(ToolCallResult::Error(error_msg.clone()));

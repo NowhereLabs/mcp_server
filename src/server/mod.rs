@@ -10,9 +10,6 @@ use crate::shared::state::AppState;
 pub mod error;
 pub mod mcp_router;
 
-#[cfg(test)]
-mod echo_test;
-
 pub use mcp_router::McpRouter;
 
 /// Creates a new MCP server instance with the given application state.

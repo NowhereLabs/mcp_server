@@ -47,7 +47,7 @@ const alpineOptimizerPlugin: Plugin = {
 };
 
 const config: BuildOptions = {
-  entryPoints: [isDev ? 'static/js/alpine-components.ts' : 'static/js/alpine-components-optimized.ts'],
+  entryPoints: [isDev ? 'static/js/alpine-components.ts' : 'static/js/alpine-components-production.ts'],
   bundle: true,
   outfile: 'static/js/dashboard.min.js',
   minify: !isDev,
@@ -79,6 +79,16 @@ const config: BuildOptions = {
   // External dependencies (loaded via CDN)
   external: [],
   
+  // Production-specific optimizations
+  ...(isDev ? {} : {
+    // Aggressive tree shaking in production
+    ignoreAnnotations: false,
+    // Mark side-effect-free files
+    pure: ['console.log', 'console.warn', 'console.info'],
+    // Optimize for smaller output
+    charset: 'utf8',
+  }),
+  
   // Define global variables for production
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
@@ -92,6 +102,13 @@ const config: BuildOptions = {
   dropLabels: isDev ? [] : ['DEV'],
   drop: isDev ? [] : ['console', 'debugger'],
   mangleProps: isDev ? undefined : /^_/,
+  
+  // Additional production optimizations
+  legalComments: 'none',
+  keepNames: false,
+  minifyWhitespace: !isDev,
+  minifyIdentifiers: !isDev,
+  minifySyntax: !isDev,
   
   // Banner to identify build
   banner: {
@@ -126,10 +143,30 @@ function getFileSize(filePath: string): string {
   }
 }
 
+// Build hot-reload.js separately
+async function buildHotReload(): Promise<void> {
+  const hotReloadConfig: BuildOptions = {
+    entryPoints: ['static/js/hot-reload.ts'],
+    bundle: false,
+    outfile: 'static/js/hot-reload.js',
+    minify: false,
+    sourcemap: false,
+    target: ['es2020'],
+    format: 'iife',
+    platform: 'browser',
+  };
+  
+  await build(hotReloadConfig);
+  console.log('📦 Hot-reload script built');
+}
+
 // Build function for package.json scripts
 export async function buildProduction(): Promise<void> {
   try {
     const result = await build(config);
+    
+    // Build hot-reload.js
+    await buildHotReload();
     
     if (result.metafile) {
       // Write metafile for analysis using Node.js fs
@@ -161,6 +198,9 @@ export async function buildDevelopment(): Promise<void> {
     };
     
     const result = await build(devConfig);
+    
+    // Build hot-reload.js
+    await buildHotReload();
     
     if (result.metafile) {
       const metafile = result.metafile;

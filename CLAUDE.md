@@ -9,6 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Full build with all assets (recommended)
 ./scripts/build.sh
 
+# Generate TypeScript types from Rust
+cargo run --bin generate-types
+
 # Build Rust only
 cargo build --release
 
@@ -23,7 +26,12 @@ cargo run --release -- --mode=both        # Both (default)
 # Development mode with hot-reload
 ./scripts/dev.sh       # Dashboard only with hot-reload
 ./scripts/dev-both.sh  # Both MCP and dashboard with hot-reload
+./scripts/dev-full.sh  # Full development environment with type generation
 cargo run -- --dev     # Run with dev mode manually
+
+# Type generation development
+./scripts/watch-types.sh  # Watch Rust types and regenerate TypeScript
+npm run watch-types      # NPM script for type watching
 
 # Watch CSS changes during development
 npm run watch-css
@@ -31,6 +39,9 @@ npm run watch-css
 # Build JavaScript components
 npm run build-js:dev   # Development build with sourcemaps
 npm run build-js:prod  # Production build, minified
+
+# Type generation
+npm run generate-types  # Generate TypeScript types from Rust
 
 # Docker deployment
 docker-compose -f docker/docker-compose.yml up --build
@@ -135,7 +146,6 @@ This is a high-performance Rust MCP server with real-time web dashboard using Ty
 2. **`src/server/`** - MCP protocol implementation
    - `mod.rs`: MCP server setup using official SDK
    - `mcp_router.rs`: Router implementation with tool registry
-   - `echo_test.rs`: Example echo tool implementation
    - `error.rs`: Custom error types for MCP operations
 
 3. **`src/dashboard/`** - Web interface
@@ -159,7 +169,7 @@ The `AppState` is designed for high-concurrency scenarios:
 
 ### Adding New MCP Tools
 
-Currently, the server implements an "echo" tool. To add new tools:
+Currently, the server implements a "file_search" tool. To add new tools:
 
 1. Create a new file in `src/server/` (e.g., `my_tool.rs`)
 2. Implement the tool handler function with signature:

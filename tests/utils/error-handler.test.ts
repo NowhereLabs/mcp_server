@@ -325,15 +325,11 @@ describe('ErrorHandler', () => {
       const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
       const mockWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const mockAdd = vi.fn();
-      const mockAddError = vi.fn();
       
       globalThis.Alpine = {
         store: vi.fn((name: string) => {
           if (name === 'notifications') {
             return { add: mockAdd };
-          }
-          if (name === 'errorBoundary') {
-            return { addError: mockAddError };
           }
           return {};
         })
@@ -346,7 +342,7 @@ describe('ErrorHandler', () => {
       // Check that either error or warn was called (depends on severity)
       expect(mockError.mock.calls.length + mockWarn.mock.calls.length).toBeGreaterThan(0);
       expect(mockAdd).toHaveBeenCalled();
-      expect(mockAddError).toHaveBeenCalled();
+      // Error boundary functionality removed
       
       mockError.mockRestore();
       mockWarn.mockRestore();

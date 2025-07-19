@@ -3,26 +3,72 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::timeout;
 
 fn unique_image_name(base: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    use std::process;
+
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs();
-    format!("{}-{}", base, timestamp)
+        .as_nanos();
+
+    let pid = process::id();
+
+    // Add thread ID to further differentiate
+    let thread_id = std::thread::current().id();
+
+    // Create a hash of the combination
+    let mut hasher = DefaultHasher::new();
+    timestamp.hash(&mut hasher);
+    pid.hash(&mut hasher);
+    thread_id.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    format!("{}-{}-{}", base, timestamp, hash)
+}
+
+fn cleanup_docker_resources(image_name: &str, container_name: Option<&str>) {
+    // Stop and remove container if specified
+    if let Some(container) = container_name {
+        let _ = Command::new("docker").args(&["stop", container]).output();
+        let _ = Command::new("docker")
+            .args(&["rm", "-f", container])
+            .output();
+    }
+
+    // Remove image with force
+    let _ = Command::new("docker")
+        .args(&["rmi", "-f", image_name])
+        .output();
+
+    // Prune build cache to prevent conflicts
+    let _ = Command::new("docker")
+        .args(&["builder", "prune", "-f"])
+        .output();
 }
 
 #[tokio::test]
 async fn test_docker_build_succeeds() {
     let image_name = unique_image_name("rust-mcp-server-test");
 
+    // Clean up any existing resources first
+    cleanup_docker_resources(&image_name, None);
+
     let output = Command::new("docker")
-        .args(&["build", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
     // Clean up after test
-    let _ = Command::new("docker")
-        .args(&["rmi", "-f", &image_name])
-        .output();
+    cleanup_docker_resources(&image_name, None);
 
     assert!(
         output.status.success(),
@@ -36,10 +82,8 @@ async fn test_docker_container_starts_and_responds() {
     let image_name = unique_image_name("rust-mcp-server-test");
     let container_name = unique_image_name("rust-mcp-server-test-container");
 
-    // Remove existing image if it exists
-    let _ = Command::new("docker")
-        .args(&["rmi", "-f", &image_name])
-        .output();
+    // Clean up any existing resources first
+    cleanup_docker_resources(&image_name, Some(&container_name));
 
     // Build the image first
     println!("Building Docker image: {}", image_name);
@@ -127,17 +171,8 @@ async fn test_docker_container_starts_and_responds() {
     })
     .await;
 
-    // Cleanup: Stop and remove container
-    let _ = Command::new("docker")
-        .args(&["stop", &container_name])
-        .output();
-
-    let _ = Command::new("docker")
-        .args(&["rm", &container_name])
-        .output();
-
-    // Remove test image
-    let _ = Command::new("docker").args(&["rmi", &image_name]).output();
+    // Cleanup: Stop and remove container and image
+    cleanup_docker_resources(&image_name, Some(&container_name));
 
     assert!(
         health_check.is_ok(),
@@ -149,9 +184,20 @@ async fn test_docker_container_starts_and_responds() {
 async fn test_docker_container_runs_with_correct_uid() {
     let image_name = unique_image_name("rust-mcp-server-test-uid");
 
+    // Clean up any existing resources first
+    cleanup_docker_resources(&image_name, None);
+
     // Build the image first
     let build_output = Command::new("docker")
-        .args(&["build", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
@@ -168,7 +214,7 @@ async fn test_docker_container_runs_with_correct_uid() {
         .expect("Failed to check UID in container");
 
     // Remove test image
-    let _ = Command::new("docker").args(&["rmi", &image_name]).output();
+    cleanup_docker_resources(&image_name, None);
 
     assert!(
         uid_check_output.status.success(),
@@ -232,9 +278,20 @@ async fn test_docker_compose_build_succeeds() {
 async fn test_docker_file_permissions() {
     let image_name = unique_image_name("rust-mcp-server-test-perms");
 
+    // Clean up any existing resources first
+    cleanup_docker_resources(&image_name, None);
+
     // Build the image first
     let build_output = Command::new("docker")
-        .args(&["build", "-f", "docker/Dockerfile", "-t", &image_name, "."])
+        .args(&[
+            "build",
+            "--no-cache",
+            "-f",
+            "docker/Dockerfile",
+            "-t",
+            &image_name,
+            ".",
+        ])
         .output()
         .expect("Failed to execute docker build command");
 
@@ -251,7 +308,7 @@ async fn test_docker_file_permissions() {
         .expect("Failed to check file permissions in container");
 
     // Remove test image
-    let _ = Command::new("docker").args(&["rmi", &image_name]).output();
+    cleanup_docker_resources(&image_name, None);
 
     assert!(
         perms_check_output.status.success(),

@@ -198,7 +198,7 @@ describe('Dashboard Integration Tests', () => {
       const event = new MessageEvent('message', {
         data: JSON.stringify({
           type: 'tool_called',
-          name: 'echo',
+          name: 'file_search',
           timestamp: new Date().toISOString()
         })
       });
@@ -232,7 +232,7 @@ describe('Dashboard Integration Tests', () => {
       // Mock tool execution response
       const mockResult: ToolExecutionResult = {
         success: true,
-        result: { echo: 'Hello World' },
+        result: { files: ['test.txt'] },
         duration: 150
       };
 
@@ -241,22 +241,22 @@ describe('Dashboard Integration Tests', () => {
         json: async () => mockResult
       });
 
-      const response = await fetch('/api/tools/echo', {
+      const response = await fetch('/api/tools/file_search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Hello World' })
+        body: JSON.stringify({ query: 'test' })
       });
 
       const data = await response.json();
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/tools/echo', {
+      expect(global.fetch).toHaveBeenCalledWith('/api/tools/file_search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Hello World' })
+        body: JSON.stringify({ query: 'test' })
       });
 
       expect(data.success).toBe(true);
-      expect(data.result).toEqual({ echo: 'Hello World' });
+      expect(data.result).toEqual({ files: ['test.txt'] });
     });
 
     it('should handle tool execution errors', async () => {
@@ -271,10 +271,10 @@ describe('Dashboard Integration Tests', () => {
         json: async () => mockError
       });
 
-      const response = await fetch('/api/tools/echo', {
+      const response = await fetch('/api/tools/file_search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Invalid input' })
+        body: JSON.stringify({ query: '' })
       });
 
       const data = await response.json();
