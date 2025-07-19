@@ -1,6 +1,4 @@
 use std::fs;
-use std::io::Write;
-use std::path::Path;
 use std::time::Duration;
 
 use rust_mcp_server::dashboard::hot_reload::{HotReloadWatcher, ReloadEvent};
@@ -26,7 +24,6 @@ fn create_temp_workspace() -> TempDir {
 
     temp_dir
 }
-
 
 /// Test that the hot reload watcher can be created and started
 #[tokio::test]
@@ -114,40 +111,37 @@ async fn test_file_type_categorization() {
     // Frontend files
     let frontend_extensions = vec!["js", "css", "html", "askama"];
     for ext in frontend_extensions {
-        let filename = format!("test.{}", ext);
+        let filename = format!("test.{ext}");
         assert!(
             filename.ends_with(".js")
                 || filename.ends_with(".css")
                 || filename.ends_with(".html")
                 || filename.ends_with(".askama"),
-            "File {} should be categorized as frontend",
-            filename
+            "File {filename} should be categorized as frontend"
         );
     }
 
     // Backend files
     let backend_extensions = vec!["rs"];
     for ext in backend_extensions {
-        let filename = format!("test.{}", ext);
+        let filename = format!("test.{ext}");
         assert!(
             filename.ends_with(".rs"),
-            "File {} should be categorized as backend",
-            filename
+            "File {filename} should be categorized as backend"
         );
     }
 
     // Other files should be ignored
     let ignored_extensions = vec!["txt", "md", "log", "backup"];
     for ext in ignored_extensions {
-        let filename = format!("test.{}", ext);
+        let filename = format!("test.{ext}");
         assert!(
             !filename.ends_with(".js")
                 && !filename.ends_with(".css")
                 && !filename.ends_with(".html")
                 && !filename.ends_with(".askama")
                 && !filename.ends_with(".rs"),
-            "File {} should be ignored",
-            filename
+            "File {filename} should be ignored"
         );
     }
 }
@@ -163,8 +157,8 @@ async fn test_reload_event_types() {
     let _backend_clone = backend_event.clone();
 
     // Test that events have proper Debug implementation
-    let frontend_debug = format!("{:?}", frontend_event);
-    let backend_debug = format!("{:?}", backend_event);
+    let frontend_debug = format!("{frontend_event:?}");
+    let backend_debug = format!("{backend_event:?}");
 
     assert!(frontend_debug.contains("FrontendChanged"));
     assert!(backend_debug.contains("BackendChanged"));
